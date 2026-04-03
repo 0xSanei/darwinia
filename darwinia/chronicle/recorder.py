@@ -29,13 +29,18 @@ class EvolutionRecorder:
             'population': stats['population_snapshot'],
         }
 
-        gen_path = self.output_dir / 'generations' / f'gen_{gen:04d}.json'
-        with open(gen_path, 'w') as f:
-            json.dump(gen_data, f, indent=2, default=str)
+        try:
+            gen_path = self.output_dir / 'generations' / f'gen_{gen:04d}.json'
+            with open(gen_path, 'w') as f:
+                json.dump(gen_data, f, indent=2, default=str)
 
-        champ_path = self.output_dir / 'champions' / f'champion_gen_{gen:04d}.json'
-        with open(champ_path, 'w') as f:
-            json.dump(stats['champion'].to_dict(), f, indent=2, default=str)
+            champion = stats.get('champion')
+            if champion is not None:
+                champ_path = self.output_dir / 'champions' / f'champion_gen_{gen:04d}.json'
+                with open(champ_path, 'w') as f:
+                    json.dump(champion.to_dict(), f, indent=2, default=str)
+        except (OSError, TypeError) as e:
+            print(f"Warning: failed to save generation {gen} data: {e}")
 
         self.summary.append({
             'generation': gen,
@@ -43,6 +48,9 @@ class EvolutionRecorder:
             'avg_fitness': stats['avg_fitness'],
             'genetic_diversity': stats['genetic_diversity'],
         })
+
+        # Incrementally save summary to avoid data loss on crash
+        self.save_summary()
 
     def save_summary(self):
         """Save the evolution summary."""

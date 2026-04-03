@@ -8,7 +8,7 @@ from pathlib import Path
 st.set_page_config(page_title="Arms Race", layout="wide")
 st.title("\u2694\ufe0f Adversarial Arms Race")
 
-output = Path('output')
+output = Path(__file__).resolve().parent.parent.parent / 'output'
 report_path = output / 'final_report.json'
 
 if not report_path.exists():

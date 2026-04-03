@@ -13,8 +13,8 @@ class AdversarialArena:
 
     def __init__(self, config: dict = None):
         self.config = config or {}
-        self.adversary = AdversaryAgent(config)
-        self.rounds_per_test = config.get('rounds_per_test', 3)
+        self.adversary = AdversaryAgent(self.config)
+        self.rounds_per_test = self.config.get('rounds_per_test', 3)
         self.history: list = []
 
     def test_agent(self, dna: AgentDNA, normal_data: np.ndarray) -> float:

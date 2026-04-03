@@ -37,9 +37,10 @@ class FitnessEvaluator:
         total_pnl = sum(pnls)
         win_rate = sum(1 for p in pnls if p > 0) / len(pnls)
 
-        # Sharpe ratio (simplified)
-        if len(pnl_pcts) > 1 and np.std(pnl_pcts) > 0:
-            sharpe = np.mean(pnl_pcts) / np.std(pnl_pcts)
+        # Sharpe ratio
+        if len(pnl_pcts) > 1 and np.std(pnl_pcts, ddof=1) > 0:
+            sharpe = (np.mean(pnl_pcts) - self.risk_free_rate) / np.std(pnl_pcts, ddof=1)
+            sharpe = float(np.clip(sharpe, -3, 3))  # Normalize to prevent dominating composite
         else:
             sharpe = 0.0
 
@@ -47,7 +48,7 @@ class FitnessEvaluator:
         cumulative = np.cumsum(pnls) + initial_capital
         peak = np.maximum.accumulate(cumulative)
         drawdowns = (cumulative - peak) / peak
-        max_dd = abs(min(drawdowns)) if len(drawdowns) > 0 else 0
+        max_dd = min(abs(min(drawdowns)), 1.0) if len(drawdowns) > 0 else 0
 
         # Composite fitness
         composite = (

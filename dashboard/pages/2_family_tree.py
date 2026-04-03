@@ -8,7 +8,7 @@ from pathlib import Path
 st.set_page_config(page_title="Family Tree", layout="wide")
 st.title("\U0001f333 Champion Family Tree")
 
-output = Path('output')
+output = Path(__file__).resolve().parent.parent.parent / 'output'
 champions_dir = output / 'champions'
 
 if not champions_dir.exists() or not list(champions_dir.glob('*.json')):

@@ -160,9 +160,9 @@ class AdversaryAgent:
             else:
                 price = start_price
 
-            h = price * (1 + abs(random.gauss(0, 0.005)))
-            l = price * (1 - abs(random.gauss(0, 0.005)))
             o = price * (1 + random.gauss(0, 0.002))
+            h = max(price, o) * (1 + abs(random.gauss(0, 0.005)))
+            l = min(price, o) * (1 - abs(random.gauss(0, 0.005)))
 
             base_vol = 1000
             if phase['type'] in ('crash', 'dump', 'pump', 'spike'):

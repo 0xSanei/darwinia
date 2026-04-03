@@ -23,7 +23,7 @@ st.markdown("""
 - **Discoveries**: View patterns agents discovered on their own
 """)
 
-output = Path('output')
+output = Path(__file__).resolve().parent.parent / 'output'
 if (output / 'evolution_summary.json').exists():
     summary = json.loads((output / 'evolution_summary.json').read_text())
     if summary:

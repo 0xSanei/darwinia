@@ -9,8 +9,8 @@ import copy
 import random
 import uuid
 from dataclasses import dataclass, field
-from typing import List, Dict
-from datetime import datetime
+from typing import ClassVar, List, Dict
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -45,11 +45,11 @@ class AgentDNA:
     generation: int = 0
     parent_ids: List[str] = field(default_factory=list)
     mutation_log: List[str] = field(default_factory=list)
-    birth_time: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    birth_time: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     fitness: float = 0.0
 
     # List of gene field names (exclude metadata)
-    GENE_FIELDS = [
+    GENE_FIELDS: ClassVar[List[str]] = [
         'weight_price_momentum', 'weight_volume', 'weight_volatility',
         'weight_mean_reversion', 'weight_trend',
         'entry_threshold', 'exit_threshold', 'stop_loss_pct', 'take_profit_pct',

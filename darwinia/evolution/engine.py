@@ -131,8 +131,10 @@ class EvolutionEngine:
 
     def _get_data_slices(self, num_slices: int = 3) -> list:
         """Get multiple overlapping slices for robust fitness evaluation."""
+        if self.market_data is None:
+            raise ValueError("No market data loaded. Call load_data() first.")
         total = len(self.market_data)
-        slice_size = min(500, total // 3)
+        slice_size = min(500, max(100, total // 3))
 
         rng = np.random.RandomState(seed=self.population.generation * 42)
 

@@ -47,7 +47,7 @@ class PatternAnalyzer:
             std = np.std(values)
 
             max_std = 0.289  # std of uniform [0,1]
-            convergence_score = 1 - (std / max_std)
+            convergence_score = max(0.0, 1 - (std / max_std))
 
             convergence[gene] = {
                 'mean': float(mean),
@@ -71,6 +71,8 @@ class PatternAnalyzer:
                     continue
 
                 corr = np.corrcoef(vals1, vals2)[0, 1]
+                if np.isnan(corr):
+                    continue
 
                 if abs(corr) > 0.7:
                     pattern = DiscoveredPattern(

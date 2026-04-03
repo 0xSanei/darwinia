@@ -67,11 +67,16 @@ class Population:
         next_gen = []
         self.generation += 1
 
-        sorted_parents = sorted(parents, key=lambda a: a.fitness, reverse=True)
-        for elite in sorted_parents[:elite_count]:
+        # Elite from full population (not just parents) to preserve best
+        sorted_all = sorted(self.agents, key=lambda a: a.fitness, reverse=True)
+        for elite in sorted_all[:elite_count]:
             elite_copy = AgentDNA.from_dict(elite.to_dict())
             elite_copy.generation = self.generation
             next_gen.append(elite_copy)
+
+        # Guard: need at least 2 parents for crossover
+        if len(parents) < 2:
+            parents = parents * 2 if parents else sorted_all[:2]
 
         while len(next_gen) < self.size:
             p1, p2 = random.sample(parents, 2)

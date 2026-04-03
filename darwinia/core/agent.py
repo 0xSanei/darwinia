@@ -52,18 +52,21 @@ class TradingAgent:
             signal = self._compute_signal(window)
             action = self._decide(signal, candles[i])
 
+            opened_this_candle = False
             if action == TradeAction.BUY:
                 if self.state.position and self.state.position.direction == 'short':
                     self._close_position(candles[i])
                 if self.state.position is None:
                     self._open_position(candles[i], 'long')
+                    opened_this_candle = True
             elif action == TradeAction.SELL:
                 if self.state.position and self.state.position.direction == 'long':
                     self._close_position(candles[i])
                 if self.state.position is None:
                     self._open_position(candles[i], 'short')
+                    opened_this_candle = True
 
-            if self.state.position is not None:
+            if self.state.position is not None and not opened_this_candle:
                 self._check_exits(candles[i])
 
         # Close any open position at end
@@ -95,8 +98,9 @@ class TradingAgent:
         weights = weights / (weights.sum() + 1e-8)
 
         composite = np.dot(weights, signals)
+        # contrarian_bias: 0-0.5=trend follower (no inversion), 0.5-1.0=increasingly contrarian
         if self.dna.contrarian_bias > 0.5:
-            inversion = (self.dna.contrarian_bias - 0.5) * 2
+            inversion = (self.dna.contrarian_bias - 0.5) * 2  # 0 at 0.5, 1 at 1.0
             composite = composite * (1 - inversion) + (-composite) * inversion
 
         return Signal(
@@ -124,13 +128,15 @@ class TradingAgent:
 
     def _map_lookback(self) -> int:
         """Map time_horizon gene [0,1] to actual lookback period."""
-        return int(10 + self.dna.time_horizon * 190)  # 10 to 200 candles
+        return int(50 + self.dna.time_horizon * 150)  # 50 to 200 candles
 
     def _calc_momentum(self, closes: np.ndarray) -> float:
         """Price momentum: rate of change normalized."""
         if len(closes) < 2:
             return 0.0
         idx = -10 if len(closes) >= 10 else 0
+        if closes[idx] == 0:
+            return 0.0
         roc = (closes[-1] - closes[idx]) / closes[idx]
         return float(np.clip(roc * 10, -1, 1))
 
@@ -148,7 +154,10 @@ class TradingAgent:
         """Volatility signal: high vol = bearish bias for conservatives."""
         if len(closes) < 20:
             return 0.0
-        returns = np.diff(closes) / closes[:-1]
+        denominator = closes[:-1]
+        if np.any(denominator == 0):
+            return 0.0
+        returns = np.diff(closes) / denominator
         vol = np.std(returns[-20:])
         return float(np.clip(-vol * 50 + 0.5, -1, 1))
 
@@ -157,6 +166,8 @@ class TradingAgent:
         if len(closes) < 20:
             return 0.0
         ma = np.mean(closes[-20:])
+        if ma == 0:
+            return 0.0
         deviation = (closes[-1] - ma) / ma
         return float(np.clip(-deviation * 20, -1, 1))
 
@@ -166,6 +177,8 @@ class TradingAgent:
             return 0.0
         ema_fast = self._ema(closes, 12)
         ema_slow = self._ema(closes, 26)
+        if ema_slow == 0:
+            return 0.0
         diff = (ema_fast - ema_slow) / ema_slow
         return float(np.clip(diff * 50, -1, 1))
 
@@ -182,6 +195,8 @@ class TradingAgent:
     def _open_position(self, candle: np.ndarray, direction: str):
         """Open a new position."""
         price = candle[4]
+        if price <= 0 or self.state.cash <= 0:
+            return
         allocation = 0.1 + self.dna.position_sizing * 0.9
         size = (self.state.cash * allocation) / price
 
@@ -233,8 +248,8 @@ class TradingAgent:
         else:
             pnl_pct = (pos.entry_price - current_price) / pos.entry_price
 
-        sl = self.dna.stop_loss_pct * 0.2
-        tp = self.dna.take_profit_pct * 0.5
+        sl = self.dna.stop_loss_pct * 0.2 + 0.01  # [1%, 21%]
+        tp = self.dna.take_profit_pct * 0.5 + 0.01  # [1%, 51%]
 
         if pnl_pct <= -sl:
             self._close_position(candle)

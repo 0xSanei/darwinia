@@ -8,7 +8,7 @@ from pathlib import Path
 st.set_page_config(page_title="Discoveries", layout="wide")
 st.title("\U0001f52c Pattern Discovery")
 
-output = Path('output')
+output = Path(__file__).resolve().parent.parent.parent / 'output'
 report_path = output / 'final_report.json'
 
 if not report_path.exists():
@@ -76,7 +76,9 @@ st.subheader("Linked Gene Pairs")
 linked = [p for p in patterns if p['name'].startswith('linked_')]
 if linked:
     for p in linked:
-        genes = list(p['features'].keys())
+        genes = list(p.get('features', {}).keys())
+        if len(genes) < 2:
+            continue
         power = p['predictive_power']
         equiv = p.get('human_equivalent', '')
         st.markdown(f"- **{genes[0]}** <-> **{genes[1]}** (r={power:.2f}) — {equiv}")

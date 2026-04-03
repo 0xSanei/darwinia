@@ -8,7 +8,7 @@ from pathlib import Path
 st.set_page_config(page_title="Evolution", layout="wide")
 st.title("\U0001f4c8 Evolution Progress")
 
-output = Path('output')
+output = Path(__file__).resolve().parent.parent.parent / 'output'
 summary_path = output / 'evolution_summary.json'
 
 if not summary_path.exists():
@@ -59,7 +59,8 @@ st.plotly_chart(fig_div, use_container_width=True)
 
 # Champion gene distribution for latest generation
 st.subheader("Latest Champion DNA")
-latest_champ_path = sorted((output / 'champions').glob('*.json'))
+champions_dir = output / 'champions'
+latest_champ_path = sorted(champions_dir.glob('*.json'), key=lambda p: int(p.stem.split('_')[-1])) if champions_dir.exists() else []
 if latest_champ_path:
     champ = json.loads(latest_champ_path[-1].read_text())
     genes = champ.get('genes', {})

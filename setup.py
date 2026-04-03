@@ -10,5 +10,8 @@ setup(
         "streamlit>=1.30.0",
         "plotly>=5.18.0",
     ],
-    python_requires=">=3.10",
+    extras_require={
+        "dev": ["pytest>=7.4.0"],
+    },
+    python_requires=">=3.9",
 )
