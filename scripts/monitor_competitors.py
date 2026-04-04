@@ -1,6 +1,6 @@
 """
-OpenArena 竞品日监控 — 每天抓取 top 10 项目 GitHub 数据，分析变化，TG 推送报告。
-运行方式: python scripts/monitor_competitors.py
+OpenArena competitor monitor — daily scrape of top 10 project GitHub stats, diff analysis, TG push.
+Usage: python scripts/monitor_competitors.py
 """
 
 import subprocess
@@ -127,7 +127,7 @@ def calc_changes(current, previous):
 def format_report(changes, our_info):
     """Format TG message in HTML."""
     today = datetime.now().strftime("%Y-%m-%d")
-    lines = [f"<b>🏟 OpenArena 竞品日报 | {today}</b>", ""]
+    lines = [f"<b>🏟 OpenArena Daily Report | {today}</b>", ""]
 
     # Our project status
     if our_info:
@@ -139,7 +139,7 @@ def format_report(changes, our_info):
     inactive = [c for c in changes if not c["active"]]
 
     if active:
-        lines.append("<b>🔥 今日活跃</b>")
+        lines.append("<b>🔥 Active Today</b>")
         for c in active:
             delta = f"+{c['star_delta']}" if c['star_delta'] > 0 else str(c['star_delta'])
             lines.append(f"  #{c['rank']} <b>{c['name']}</b> ⭐{c['stars']}({delta})")
@@ -148,13 +148,13 @@ def format_report(changes, our_info):
 
     if inactive:
         lines.append("")
-        lines.append("<b>😴 今日无更新</b>")
+        lines.append("<b>😴 No Updates Today</b>")
         names = [f"#{c['rank']}{c['name']}" for c in inactive]
         lines.append("  " + " | ".join(names))
 
     # Star ranking
     lines.append("")
-    lines.append("<b>⭐ Star 排行</b>")
+    lines.append("<b>⭐ Star Ranking</b>")
     sorted_by_stars = sorted(changes, key=lambda x: x["stars"], reverse=True)
     for i, c in enumerate(sorted_by_stars[:5]):
         lines.append(f"  {i+1}. {c['name']}: {c['stars']:,}")
@@ -163,12 +163,12 @@ def format_report(changes, our_info):
     big_movers = [c for c in changes if abs(c.get("star_delta", 0)) > 50]
     if big_movers:
         lines.append("")
-        lines.append("<b>📈 大变动</b>")
+        lines.append("<b>📈 Big Movers</b>")
         for c in big_movers:
             lines.append(f"  {c['name']}: star {'+' if c['star_delta']>0 else ''}{c['star_delta']}")
 
     lines.append("")
-    lines.append(f"<i>截止 {today} 23:00 | 距提交截止还有 {max(0, (datetime(2026,4,15) - datetime.now()).days)} 天</i>")
+    lines.append(f"<i>As of {today} 23:00 | {max(0, (datetime(2026,4,15) - datetime.now()).days)} days until submission deadline</i>")
 
     return "\n".join(lines)
 
