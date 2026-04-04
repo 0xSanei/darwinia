@@ -10,6 +10,7 @@
   <img src="https://img.shields.io/badge/python-3.9+-blue?style=flat-square" alt="Python">
   <img src="https://img.shields.io/badge/genes-17-gold?style=flat-square" alt="17 Genes">
   <img src="https://img.shields.io/badge/attacks-6_types-red?style=flat-square" alt="6 Attack Types">
+  <img src="https://img.shields.io/badge/tests-22_passing-brightgreen?style=flat-square" alt="22 Tests">
   <img src="https://img.shields.io/badge/status-alpha-orange?style=flat-square" alt="Alpha">
 </p>
 
@@ -39,6 +40,40 @@ python -m darwinia dashboard
 ```
 
 30 seconds to first evolution run. No API keys. No cloud. Just Python + numpy.
+
+<details>
+<summary><strong>📺 Demo Output</strong> (click to expand)</summary>
+
+**Evolution run:**
+```
+🧬 Darwinia — Evolution Engine
+   Generations: 20 | Population: 30 | Data: BTC/USDT 1h (10,946 candles)
+
+   Gen   0 | ██████░░░░░░░░░░░░░░ | champ=0.32 avg=0.04 div=1.56
+   Gen   1 | █████████████░░░░░░░ | champ=0.69 avg=0.24 div=1.60
+   Gen   2 | ███████████████████████████ | champ=1.35 avg=0.64 div=1.32
+   Gen   5 | █████████████████████████████ | champ=1.46 avg=0.43 div=0.81
+   Gen  12 | █████████████████████ | champ=1.09 avg=0.82 div=0.72
+   Gen  13 | ████████████████████████ | champ=1.24 avg=0.64 div=0.57
+   Gen  19 | ████████░░░░░░░░░░░░ | champ=0.42 avg=0.12 div=0.44
+
+✅ Evolution complete! 16 patterns discovered.
+```
+
+**Adversarial arena test:**
+```
+⚔️ Darwinia — Adversarial Arena
+   Testing evolved champion against targeted attacks...
+
+   whipsaw              | PnL: +0.00% | ✅ survived
+   fake_breakout        | PnL: +0.00% | ✅ survived
+   pump_and_dump        | PnL: +0.00% | ✅ survived
+   rug_pull             | PnL: -3.21% | ✅ survived
+   slow_bleed           | PnL: -1.05% | ✅ survived
+
+   Survival rate: 100.0%
+```
+</details>
 
 ## How It Works
 
@@ -124,6 +159,7 @@ darwinia/
 ├── arena/         # Adversarial attacks and combat
 ├── discovery/     # Pattern analysis and naming
 ├── chronicle/     # History recording and species tracking
+├── personality/   # Personality profiling + market regime detection
 └── __main__.py    # CLI entry point
 
 dashboard/         # Streamlit visualization (4 pages)
@@ -135,7 +171,7 @@ scripts/           # Competitor monitoring, utilities
 | Layer | Status | What It Does |
 |-------|--------|-------------|
 | **Evolution Engine** | ✅ Implemented | Genetic algorithm + adversarial arena + pattern discovery |
-| **Personality Engine** | 🔮 Designed | Quantified trading personalities + regime switching |
+| **Personality Engine** | ✅ Implemented | Quantified trading personalities + market regime detection |
 | **Knowledge Protocol** | 🔮 Designed | Agents trade discovered patterns with each other |
 
 ## CLI Reference
