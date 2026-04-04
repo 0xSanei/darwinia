@@ -228,12 +228,17 @@ python -m darwinia info --json                 # System info as JSON
 
 ## Dashboard
 
-Four interactive views:
+Four interactive views built with Streamlit:
 
-- **Evolution**: Fitness curves + population diversity + gene distributions
-- **Family Tree**: Champion ancestry treemap
-- **Arms Race**: Attack survival + diversity tradeoff scatter
-- **Discoveries**: Convergence radar + linked gene pairs
+| Evolution | Family Tree |
+|:---------:|:-----------:|
+| ![Evolution](docs/screenshots/evolution.png) | ![Family Tree](docs/screenshots/family_tree.png) |
+| Fitness metrics + population stats | Champion ancestry treemap |
+
+| Arms Race | Discoveries |
+|:---------:|:-----------:|
+| ![Arms Race](docs/screenshots/arms_race.png) | ![Discoveries](docs/screenshots/discoveries.png) |
+| Fitness under adversarial pressure | Emergent patterns table |
 
 ---
 
