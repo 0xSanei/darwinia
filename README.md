@@ -15,10 +15,6 @@
   <img src="https://img.shields.io/badge/tests-22_passing-brightgreen?style=flat-square" alt="22 Tests">
 </p>
 
-<p align="center">
-  <a href="README.md">English</a> | <a href="README_CN.md">中文</a>
-</p>
-
 ---
 
 ## For OpenClaw / Claude Code agents

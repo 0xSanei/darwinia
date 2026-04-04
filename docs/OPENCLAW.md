@@ -50,10 +50,10 @@ python -m darwinia info --json            # System info
 ## What comes back
 
 After evolution, the agent receives JSON with:
-- **Champion DNA** — 17-gene strategy encoding
-- **Fitness metrics** — Sharpe, returns, win rate, drawdown
-- **Adversarial survival rate** — robustness against manipulation
-- **Discovered patterns** — emergent trading rules with human-readable names
+- **Champion DNA** — 17-gene strategy encoding with fitness score
+- **Evolution summary** — generations run, final fitness, genetic diversity
+- **Discovered patterns** — emergent trading rules (not pre-programmed)
+- **Top agents** — top 5 agents from the final population
 
 ## Architecture Alignment
 

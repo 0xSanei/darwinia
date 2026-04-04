@@ -52,7 +52,8 @@ def cmd_evolve(args):
         champ = stats['champion_fitness']
         avg = stats['avg_fitness']
         div = stats['genetic_diversity']
-        bar = '█' * int(champ * 20) + '░' * (20 - int(champ * 20))
+        filled = max(0, min(20, int(champ * 20)))
+        bar = '█' * filled + '░' * (20 - filled)
         print(f"   Gen {gen:3d} | {bar} | champ={champ:.4f} avg={avg:.4f} div={div:.3f}")
 
     results = engine.run(generations=args.generations, callback=progress)
@@ -151,7 +152,9 @@ def cmd_info(args):
 
     json_mode = getattr(args, 'json', False)
 
-    data_files = glob_mod.glob('data/*.csv')
+    project_root = os.path.join(os.path.dirname(__file__), '..')
+    data_dir = os.path.join(project_root, 'data')
+    data_files = glob_mod.glob(os.path.join(data_dir, '*.csv'))
     candle_count = 0
     for f in data_files:
         try:
@@ -167,7 +170,7 @@ def cmd_info(args):
         "genes": 17,
         "attack_types": 6,
         "data_candles": candle_count,
-        "data_files": data_files,
+        "data_files": [os.path.basename(f) for f in data_files],
         "python_version": sys.version,
         "status": "ready",
     }
