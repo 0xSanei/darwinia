@@ -12,7 +12,7 @@
   <a href="https://claude.ai"><img src="https://img.shields.io/badge/Claude_Code-compatible-blueviolet?style=flat-square" alt="Claude Code"></a>
   <img src="https://img.shields.io/badge/genes-17-gold?style=flat-square" alt="17 Genes">
   <img src="https://img.shields.io/badge/attacks-6_types-red?style=flat-square" alt="6 Attack Types">
-  <img src="https://img.shields.io/badge/tests-22_passing-brightgreen?style=flat-square" alt="22 Tests">
+  <img src="https://img.shields.io/badge/tests-30_passing-brightgreen?style=flat-square" alt="30 Tests">
   <a href="https://colab.research.google.com/github/0xSanei/darwinia/blob/main/notebooks/quickstart.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Colab"></a>
 </p>
 
@@ -227,6 +227,8 @@ python -m darwinia evolve -d my_data.csv       # Custom data
 python -m darwinia evolve --json               # JSON output for agents
 python -m darwinia arena -c output/champions/champion_gen_0049.json
 python -m darwinia arena -r 10 --json          # 10 rounds, JSON output
+python -m darwinia validate -w 3 -g 20         # Walk-forward overfitting check
+python -m darwinia explain -c champion.json    # Gene ablation analysis
 python -m darwinia dashboard                   # Web UI
 python -m darwinia info --json                 # System info as JSON
 ```
@@ -261,6 +263,20 @@ darwinia/
 
 dashboard/         # Streamlit visualization (4 pages)
 scripts/           # Competitor monitoring, utilities
+```
+
+### Validation & Explainability
+
+**Walk-Forward Validation** splits data chronologically (train on past, test on future). If fitness degrades out-of-sample, the strategy is overfitting.
+
+```bash
+python -m darwinia validate -w 3 --json
+```
+
+**Gene Ablation** zeroes each gene one at a time and measures fitness drop. Genes that cause the biggest drop are the most important — proving the agent found real signal, not noise.
+
+```bash
+python -m darwinia explain -c champion.json --json
 ```
 
 ### Three Layers
