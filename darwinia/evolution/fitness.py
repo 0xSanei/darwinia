@@ -15,8 +15,9 @@ from ..core.types import TradeResult, FitnessScore
 
 
 class FitnessEvaluator:
+    """Computes composite fitness scores from trade results."""
 
-    def __init__(self, risk_free_rate: float = 0.0):
+    def __init__(self, risk_free_rate: float = 0.0) -> None:
         self.risk_free_rate = risk_free_rate
 
     def evaluate(self, trades: List[TradeResult],

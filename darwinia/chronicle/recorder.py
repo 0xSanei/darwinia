@@ -4,18 +4,20 @@ Records every generation's data for later visualization and analysis.
 
 import json
 from pathlib import Path
+from typing import Dict, List
 
 
 class EvolutionRecorder:
+    """Persists generation data, champion DNA, and evolution summaries to disk."""
 
-    def __init__(self, output_dir: str = 'output'):
+    def __init__(self, output_dir: str = 'output') -> None:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         (self.output_dir / 'generations').mkdir(exist_ok=True)
         (self.output_dir / 'champions').mkdir(exist_ok=True)
-        self.summary = []
+        self.summary: List[Dict] = []
 
-    def record_generation(self, stats: dict):
+    def record_generation(self, stats: Dict) -> None:
         """Save one generation's complete data."""
         gen = stats['generation']
 
@@ -52,13 +54,13 @@ class EvolutionRecorder:
         # Incrementally save summary to avoid data loss on crash
         self.save_summary()
 
-    def save_summary(self):
+    def save_summary(self) -> None:
         """Save the evolution summary."""
         path = self.output_dir / 'evolution_summary.json'
         with open(path, 'w') as f:
             json.dump(self.summary, f, indent=2)
 
-    def save_final_report(self, results: dict):
+    def save_final_report(self, results: Dict) -> None:
         """Save the complete evolution report."""
         path = self.output_dir / 'final_report.json'
         with open(path, 'w') as f:

@@ -8,11 +8,12 @@ from ..core.dna import AgentDNA
 
 
 class Population:
+    """Manages a population of AgentDNA through selection and breeding cycles."""
 
-    def __init__(self, size: int = 50, seed_ratio: float = 0.2):
+    def __init__(self, size: int = 50, seed_ratio: float = 0.2) -> None:
         self.size = size
         self.agents: List[AgentDNA] = []
-        self.generation = 0
+        self.generation: int = 0
         self._init_population(seed_ratio)
 
     def _init_population(self, seed_ratio: float):

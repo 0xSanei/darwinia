@@ -34,7 +34,7 @@ class TradingAgent:
     - Personality -> position sizing, timing, direction bias
     """
 
-    def __init__(self, dna: AgentDNA):
+    def __init__(self, dna: AgentDNA) -> None:
         self.dna = dna
         self.state = AgentState()
 

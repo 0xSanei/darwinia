@@ -3,12 +3,13 @@ Pattern Discovery — analyze WHY survivors survived.
 """
 
 import numpy as np
-from typing import List
+from typing import Dict, List
 from ..core.dna import AgentDNA
 from ..core.types import DiscoveredPattern
 
 
 class PatternAnalyzer:
+    """Discovers convergence patterns and gene correlations among surviving agents."""
 
     def analyze_survivors(self, survivors: List[AgentDNA],
                          market_data: np.ndarray) -> List[DiscoveredPattern]:

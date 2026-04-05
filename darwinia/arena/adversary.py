@@ -64,7 +64,7 @@ class AdversaryAgent:
         },
     }
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Dict = None) -> None:
         self.config = config or {}
         self.attack_success_history: Dict[str, List[bool]] = {
             k: [] for k in self.ATTACK_TEMPLATES
@@ -179,7 +179,7 @@ class AdversaryAgent:
 
         return candles, price
 
-    def record_result(self, attack_type: str, succeeded: bool):
+    def record_result(self, attack_type: str, succeeded: bool) -> None:
         """Track which attacks succeed for future strategy."""
         if attack_type in self.attack_success_history:
             self.attack_success_history[attack_type].append(succeeded)
