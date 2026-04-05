@@ -7,3 +7,10 @@ dist/
 build/
 .pytest_cache/
 monitor_data/
+node_modules/
+*.log
+*.key
+*.pem
+*mnemonic*
+*seed_phrase*
+.env.*
