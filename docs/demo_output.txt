@@ -1,0 +1,36 @@
+🧬 Darwinia — Evolution Engine
+   Generations: 15
+   Population:  30
+   Data:        data/btc_1h.csv
+
+   Loaded 10946 candles
+   Gen   0 | ████████░░░░░░░░░░░░ | champ=0.4415 avg=0.0563 div=1.560
+   Gen   1 | ████████████░░░░░░░░ | champ=0.6005 avg=0.1504 div=1.651
+   Gen   2 | ██████████████████░░ | champ=0.9166 avg=0.3672 div=1.497
+   Gen   3 | ███████░░░░░░░░░░░░░ | champ=0.3584 avg=0.2408 div=1.377
+   Gen   4 | █████████░░░░░░░░░░░ | champ=0.4785 avg=0.2563 div=1.107
+   Gen   5 | █████████░░░░░░░░░░░ | champ=0.4970 avg=0.3929 div=1.056
+   Gen   6 | ████████████████████ | champ=1.1412 avg=0.7172 div=0.929
+   Gen   7 | █████░░░░░░░░░░░░░░░ | champ=0.2990 avg=0.2318 div=0.682
+   Gen   8 | ██████████████████░░ | champ=0.9457 avg=0.7454 div=0.721
+   Gen   9 | ███████████░░░░░░░░░ | champ=0.5871 avg=0.4788 div=0.577
+   Gen  10 | ████████░░░░░░░░░░░░ | champ=0.4426 avg=0.3443 div=0.491
+   Gen  11 | ████████░░░░░░░░░░░░ | champ=0.4244 avg=0.2825 div=0.496
+   Gen  12 | ██████████████████░░ | champ=0.9066 avg=0.7886 div=0.507
+   Gen  13 | ████████████░░░░░░░░ | champ=0.6411 avg=0.5622 div=0.450
+   Gen  14 | ████████████████░░░░ | champ=0.8071 avg=0.5126 div=0.336
+
+✅ Evolution complete!
+   Champions saved to: output/champions/
+   Patterns discovered: 16
+   Final champion fitness: 0.8070712540953198
+
+⚔️ Darwinia — Adversarial Arena
+   Testing seed: trend_follower
+
+   Survival rate: 100.0%
+   pump_and_dump        | PnL: +0.00% | ✅ survived
+   whipsaw              | PnL: +0.00% | ✅ survived
+   fake_breakout        | PnL: +0.00% | ✅ survived
+   whipsaw              | PnL: +0.00% | ✅ survived
+   fake_breakout        | PnL: +0.00% | ✅ survived
