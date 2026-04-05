@@ -13,28 +13,16 @@ if sys.platform == "win32":
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
-def cmd_evolve(args):
-    """Run evolution."""
+def _run_single_evolve(args, data_dir, data_file, json_mode):
+    """Run evolution on a single data file. Returns results dict."""
     import numpy as np
     from .core.market import MarketEnvironment
     from .evolution.engine import EvolutionEngine
 
-    json_mode = getattr(args, 'json', False)
-
-    if not json_mode:
-        print(f"🧬 Darwinia — Evolution Engine")
-        print(f"   Generations: {args.generations}")
-        print(f"   Population:  {args.population}")
-        print(f"   Data:        {args.data}")
-        print()
-
-    # Load market data
-    data_dir = os.path.dirname(args.data)
-    data_file = os.path.basename(args.data)
     market = MarketEnvironment(data_dir)
     candles = market.load_csv(data_file)
     if not json_mode:
-        print(f"   Loaded {len(candles)} candles")
+        print(f"   Loaded {len(candles)} candles from {data_file}")
 
     config = {
         'population_size': args.population,
@@ -57,17 +45,84 @@ def cmd_evolve(args):
         print(f"   Gen {gen:3d} | {bar} | champ={champ:.4f} avg={avg:.4f} div={div:.3f}")
 
     results = engine.run(generations=args.generations, callback=progress)
-
-    # Save results
     engine.recorder.save_summary()
     engine.recorder.save_final_report(results)
+    return results
+
+
+def cmd_evolve(args):
+    """Run evolution."""
+    json_mode = getattr(args, 'json', False)
+    multi = getattr(args, 'multi', False)
+
+    if multi:
+        # Multi-asset mode: auto-load all CSVs in data/ directory
+        from .core.market import MarketEnvironment
+
+        data_dir = os.path.dirname(args.data) or 'data'
+        market = MarketEnvironment(data_dir)
+        csv_files = market.list_available()
+        if not csv_files:
+            print("No CSV files found in data directory.")
+            return
+
+        if not json_mode:
+            print(f"🧬 Darwinia — Multi-Asset Evolution")
+            print(f"   Assets: {len(csv_files)} files in {data_dir}/")
+            print(f"   Generations: {args.generations} | Population: {args.population}")
+            print()
+
+        all_results = {}
+        for csv_file in csv_files:
+            asset_name = os.path.splitext(csv_file)[0]
+            if not json_mode:
+                print(f"\n── {asset_name} {'─' * (50 - len(asset_name))}")
+            results = _run_single_evolve(args, data_dir, csv_file, json_mode)
+            last_gen = results['generations'][-1] if results['generations'] else {}
+            champ_fitness = last_gen.get('champion_fitness', 0)
+            all_results[asset_name] = {
+                'fitness': champ_fitness,
+                'results': results,
+            }
+
+        # Report best asset
+        best_asset = max(all_results, key=lambda k: all_results[k]['fitness'])
+        if json_mode:
+            output = {
+                "multi_asset": True,
+                "assets": {
+                    name: {"champion_fitness": round(info['fitness'], 4)}
+                    for name, info in all_results.items()
+                },
+                "best_asset": best_asset,
+                "best_fitness": round(all_results[best_asset]['fitness'], 4),
+            }
+            print(json.dumps(output, indent=2))
+        else:
+            print(f"\n{'═' * 55}")
+            print(f"  Multi-Asset Results:")
+            for name, info in sorted(all_results.items(), key=lambda x: x[1]['fitness'], reverse=True):
+                marker = " ★" if name == best_asset else ""
+                print(f"    {name:20s} fitness={info['fitness']:.4f}{marker}")
+            print(f"\n  Best performer: {best_asset} ({all_results[best_asset]['fitness']:.4f})")
+        return
+
+    # Single-asset mode
+    if not json_mode:
+        print(f"🧬 Darwinia — Evolution Engine")
+        print(f"   Generations: {args.generations}")
+        print(f"   Population:  {args.population}")
+        print(f"   Data:        {args.data}")
+        print()
+
+    data_dir = os.path.dirname(args.data) or '.'
+    data_file = os.path.basename(args.data)
+    results = _run_single_evolve(args, data_dir, data_file, json_mode)
 
     if json_mode:
-        # Build JSON output from actual results
         last_gen = results['generations'][-1] if results['generations'] else {}
         champion_dict = results['champions'][-1] if results['champions'] else {}
 
-        # Top 5 agents from last generation's population snapshot
         pop_snapshot = last_gen.get('population_snapshot', [])
         top_agents = sorted(pop_snapshot, key=lambda a: a.get('fitness', 0), reverse=True)[:5]
 
@@ -235,6 +290,67 @@ def cmd_explain(args):
             print(f"   {a.gene_name:28s} {bar:15s} {sign}{abs(a.fitness_drop):.4f}")
 
 
+def cmd_fetch(args):
+    """Fetch market data from exchange APIs."""
+    from .data.fetcher import DataFetcher
+
+    json_mode = getattr(args, 'json', False)
+    fetcher = DataFetcher()
+
+    source = args.source.lower()
+    if not json_mode:
+        print(f"📡 Darwinia — Data Fetcher")
+        print(f"   Source:   {source}")
+
+    try:
+        if source == 'binance':
+            if not json_mode:
+                print(f"   Symbol:   {args.symbol}")
+                print(f"   Interval: {args.interval}")
+                print(f"   Limit:    {args.limit}")
+            candles = fetcher.fetch_binance(
+                symbol=args.symbol,
+                interval=args.interval,
+                limit=args.limit,
+            )
+            filename = f"{args.symbol.lower()}_{args.interval}.csv"
+        elif source == 'coingecko':
+            coin_id = args.symbol.lower()
+            if not json_mode:
+                print(f"   Coin:     {coin_id}")
+                print(f"   Days:     {args.limit}")
+            candles = fetcher.fetch_coingecko(
+                coin_id=coin_id,
+                days=args.limit,
+            )
+            filename = f"{coin_id}_{args.limit}d.csv"
+        else:
+            print(f"Unknown source: {source}. Use 'binance' or 'coingecko'.")
+            return
+
+        # Save to data/ directory
+        filepath = os.path.join('data', filename)
+        fetcher.save_csv(candles, filepath)
+
+        if json_mode:
+            output = {
+                "source": source,
+                "candles": len(candles),
+                "file": filepath,
+                "columns": ["timestamp", "open", "high", "low", "close", "volume"],
+            }
+            print(json.dumps(output, indent=2))
+        else:
+            print(f"\n   Fetched {len(candles)} candles")
+            print(f"   Saved to: {filepath}")
+
+    except (ConnectionError, ValueError) as e:
+        if json_mode:
+            print(json.dumps({"error": str(e)}, indent=2))
+        else:
+            print(f"\n   Error: {e}")
+
+
 def cmd_dashboard(args):
     """Launch Streamlit dashboard."""
     import subprocess
@@ -305,6 +421,7 @@ def main():
     p_evolve.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
     p_evolve.add_argument("-o", "--output", default="output", help="Output directory")
     p_evolve.add_argument("--arena-start", type=int, default=5, help="Generation to start adversarial arena (default: 5)")
+    p_evolve.add_argument("--multi", action="store_true", help="Auto-load all CSVs in data/ and evolve on each")
     p_evolve.add_argument("--json", action="store_true", help="Output results as JSON")
     p_evolve.set_defaults(func=cmd_evolve)
 
@@ -331,6 +448,15 @@ def main():
     p_exp.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
     p_exp.add_argument("--json", action="store_true", help="Output results as JSON")
     p_exp.set_defaults(func=cmd_explain)
+
+    # fetch
+    p_fetch = subparsers.add_parser("fetch", help="Fetch market data from exchange APIs")
+    p_fetch.add_argument("-s", "--symbol", default="BTCUSDT", help="Trading pair or coin ID (default: BTCUSDT)")
+    p_fetch.add_argument("-i", "--interval", default="1h", help="Candle interval for Binance (default: 1h)")
+    p_fetch.add_argument("-l", "--limit", type=int, default=1000, help="Number of candles / days (default: 1000)")
+    p_fetch.add_argument("--source", default="binance", choices=["binance", "coingecko"], help="Data source (default: binance)")
+    p_fetch.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_fetch.set_defaults(func=cmd_fetch)
 
     # dashboard
     p_dash = subparsers.add_parser("dashboard", help="Launch Streamlit dashboard")
