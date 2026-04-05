@@ -137,6 +137,104 @@ def cmd_arena(args):
             print(f"   {r.trap_type:20s} | PnL: {r.alpha_pnl:+.2%} | {status}")
 
 
+def cmd_validate(args):
+    """Run walk-forward validation."""
+    import numpy as np
+    from .core.market import MarketEnvironment
+    from .validation.walk_forward import WalkForwardValidator
+
+    json_mode = getattr(args, 'json', False)
+
+    if not json_mode:
+        print(f"🔬 Darwinia — Walk-Forward Validation")
+        print(f"   Windows: {args.windows} | Generations per window: {args.generations}")
+        print()
+
+    data_dir = os.path.dirname(args.data)
+    data_file = os.path.basename(args.data)
+    market = MarketEnvironment(data_dir)
+    candles = market.load_csv(data_file)
+    if not json_mode:
+        print(f"   Loaded {len(candles)} candles")
+
+    config = {
+        'population_size': args.population,
+        'seed_ratio': 0.2,
+        'arena_start_gen': 5,
+        'output_dir': args.output,
+    }
+
+    def progress(window_id, phase, info):
+        if json_mode:
+            return
+        print(f"   Window {window_id} [{phase}]: {info.get('candles', '?')} candles")
+
+    validator = WalkForwardValidator(n_windows=args.windows)
+    result = validator.validate(
+        candles, config,
+        generations=args.generations,
+        callback=progress,
+    )
+
+    if json_mode:
+        print(json.dumps(result.to_dict(), indent=2))
+    else:
+        print(f"\n   Results:")
+        for w in result.windows:
+            deg_marker = "⚠️" if w.degradation > 0.5 else "✅"
+            print(f"   Window {w.window_id}: train={w.train_fitness:.4f} test={w.test_fitness:.4f} "
+                  f"degradation={w.degradation:+.4f} {deg_marker}")
+        print(f"\n   Avg train:  {result.avg_train_fitness:.4f}")
+        print(f"   Avg test:   {result.avg_test_fitness:.4f}")
+        print(f"   Overfit:    {result.overfit_score:.1%}")
+        robust = "✅ ROBUST" if result.is_robust else "⚠️ OVERFITTING DETECTED"
+        print(f"   Verdict:    {robust}")
+
+
+def cmd_explain(args):
+    """Run gene ablation analysis."""
+    from .core.dna import AgentDNA
+    from .core.market import MarketEnvironment
+    from .discovery.explainer import GeneExplainer
+
+    json_mode = getattr(args, 'json', False)
+
+    if not json_mode:
+        print(f"🔍 Darwinia — Gene Ablation Analysis")
+
+    if args.champion:
+        with open(args.champion) as f:
+            dna = AgentDNA.from_dict(json.load(f))
+        if not json_mode:
+            print(f"   Agent: {dna.id}")
+    else:
+        dna = AgentDNA.seed_trend_follower()
+        if not json_mode:
+            print(f"   Agent: seed_trend_follower")
+
+    data_dir = os.path.dirname(args.data)
+    data_file = os.path.basename(args.data)
+    market = MarketEnvironment(data_dir)
+    candles = market.load_csv(data_file)
+    # Use a representative slice
+    candles = candles[:min(2000, len(candles))]
+
+    explainer = GeneExplainer()
+    result = explainer.explain(dna, candles)
+
+    if json_mode:
+        print(json.dumps(result.to_dict(), indent=2))
+    else:
+        print(f"   Base fitness: {result.base_fitness:.4f}")
+        print(f"   Risk profile: {result.risk_profile}")
+        print(f"   Strategy: {result.strategy_summary}")
+        print(f"\n   Gene Importance (top → bottom):")
+        for a in result.ablations:
+            bar = "█" * int(a.importance * 15)
+            sign = "+" if a.fitness_drop > 0 else "-" if a.fitness_drop < 0 else " "
+            print(f"   {a.gene_name:28s} {bar:15s} {sign}{abs(a.fitness_drop):.4f}")
+
+
 def cmd_dashboard(args):
     """Launch Streamlit dashboard."""
     import subprocess
@@ -216,6 +314,23 @@ def main():
     p_arena.add_argument("-r", "--rounds", type=int, default=5, help="Rounds per test (default: 5)")
     p_arena.add_argument("--json", action="store_true", help="Output results as JSON")
     p_arena.set_defaults(func=cmd_arena)
+
+    # validate
+    p_val = subparsers.add_parser("validate", help="Walk-forward validation (overfit detection)")
+    p_val.add_argument("-w", "--windows", type=int, default=3, help="Number of walk-forward windows (default: 3)")
+    p_val.add_argument("-g", "--generations", type=int, default=20, help="Generations per window (default: 20)")
+    p_val.add_argument("-p", "--population", type=int, default=30, help="Population size (default: 30)")
+    p_val.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
+    p_val.add_argument("-o", "--output", default="output", help="Output directory")
+    p_val.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_val.set_defaults(func=cmd_validate)
+
+    # explain
+    p_exp = subparsers.add_parser("explain", help="Gene ablation analysis (explainability)")
+    p_exp.add_argument("-c", "--champion", help="Path to champion JSON file")
+    p_exp.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
+    p_exp.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_exp.set_defaults(func=cmd_explain)
 
     # dashboard
     p_dash = subparsers.add_parser("dashboard", help="Launch Streamlit dashboard")
