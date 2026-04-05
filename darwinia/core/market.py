@@ -6,6 +6,7 @@ Provides normalized OHLCV data to agents and manages data splitting.
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from typing import Dict, List
 
 
 class MarketEnvironment:
@@ -45,6 +46,21 @@ class MarketEnvironment:
 
         self.candles = df[required].values.astype(float)
         return self.candles
+
+    def load_multiple(self, filenames: List[str]) -> Dict[str, np.ndarray]:
+        """Load multiple asset CSV files. Returns {asset_name: candles}."""
+        result = {}
+        for filename in filenames:
+            name = Path(filename).stem
+            candles = self.load_csv(filename)
+            result[name] = candles
+        return result
+
+    def list_available(self) -> List[str]:
+        """List all CSV files in data directory."""
+        if not self.data_dir.exists():
+            return []
+        return sorted([f.name for f in self.data_dir.glob('*.csv')])
 
     def get_train_test_split(self, train_ratio: float = 0.8) -> tuple:
         """Split data into training and test sets."""
