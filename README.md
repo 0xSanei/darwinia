@@ -12,7 +12,7 @@
   <a href="https://claude.ai"><img src="https://img.shields.io/badge/Claude_Code-compatible-blueviolet?style=flat-square" alt="Claude Code"></a>
   <img src="https://img.shields.io/badge/genes-17-gold?style=flat-square" alt="17 Genes">
   <img src="https://img.shields.io/badge/attacks-6_types-red?style=flat-square" alt="6 Attack Types">
-  <img src="https://img.shields.io/badge/tests-30_passing-brightgreen?style=flat-square" alt="30 Tests">
+  <img src="https://img.shields.io/badge/tests-45_passing-brightgreen?style=flat-square" alt="45 Tests">
   <a href="https://colab.research.google.com/github/0xSanei/darwinia/blob/main/notebooks/quickstart.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Colab"></a>
 </p>
 
@@ -229,6 +229,9 @@ python -m darwinia arena -c output/champions/champion_gen_0049.json
 python -m darwinia arena -r 10 --json          # 10 rounds, JSON output
 python -m darwinia validate -w 3 -g 20         # Walk-forward overfitting check
 python -m darwinia explain -c champion.json    # Gene ablation analysis
+python -m darwinia evolve --multi               # Multi-asset evolution (BTC+ETH+SOL)
+python -m darwinia fetch ETHUSDT -i 4h -d 90   # Fetch live data from Binance
+python -m darwinia fetch BTCUSD --source coingecko  # Fetch from CoinGecko
 python -m darwinia dashboard                   # Web UI
 python -m darwinia info --json                 # System info as JSON
 ```
@@ -259,6 +262,8 @@ darwinia/
 ├── discovery/     # Pattern analysis and naming
 ├── chronicle/     # History recording and species tracking
 ├── personality/   # Personality profiling + market regime detection
+├── knowledge/     # Layer 3: Pattern marketplace and knowledge exchange
+├── data/          # Live data fetching (Binance, CoinGecko)
 └── __main__.py    # CLI entry point
 
 dashboard/         # Streamlit visualization (4 pages)
@@ -285,7 +290,7 @@ python -m darwinia explain -c champion.json --json
 |-------|--------|-------------|
 | **Evolution Engine** | ✅ Implemented | Genetic algorithm + adversarial arena + pattern discovery |
 | **Personality Engine** | ✅ Implemented | Quantified trading personalities + market regime detection |
-| **Knowledge Protocol** | 🔮 Designed | Agents trade discovered patterns with each other |
+| **Knowledge Protocol** | ✅ Implemented | Agents trade discovered patterns through a marketplace |
 
 ---
 
@@ -299,7 +304,7 @@ The evolution engine is **domain-agnostic**. The DNA → Fitness → Selection �
 
 ```bash
 make setup       # Install dependencies
-make test        # Run 22 tests
+make test        # Run 45 tests
 make evolve      # Run 50 generations
 make arena       # Adversarial arena
 make dashboard   # Streamlit dashboard
