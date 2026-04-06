@@ -39,6 +39,8 @@ class DataFetcher:
                 data = json.loads(resp.read().decode())
         except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
             raise ConnectionError(f"Binance API request failed: {e}")
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            raise ConnectionError(f"Failed to parse Binance response: {e}")
 
         if not data:
             raise ValueError("Binance returned empty data")
@@ -46,14 +48,19 @@ class DataFetcher:
         # Binance kline format: [open_time, open, high, low, close, volume, ...]
         rows = []
         for kline in data:
-            rows.append([
-                float(kline[0]),   # timestamp
-                float(kline[1]),   # open
-                float(kline[2]),   # high
-                float(kline[3]),   # low
-                float(kline[4]),   # close
-                float(kline[5]),   # volume
-            ])
+            if not isinstance(kline, (list, tuple)) or len(kline) < 6:
+                continue  # skip malformed candles
+            try:
+                rows.append([
+                    float(kline[0]),   # timestamp
+                    float(kline[1]),   # open
+                    float(kline[2]),   # high
+                    float(kline[3]),   # low
+                    float(kline[4]),   # close
+                    float(kline[5]),   # volume
+                ])
+            except (ValueError, TypeError):
+                continue  # skip candles with non-numeric values
         return np.array(rows, dtype=float)
 
     def fetch_coingecko(self, coin_id='bitcoin', days=30) -> np.ndarray:
@@ -75,6 +82,8 @@ class DataFetcher:
                 data = json.loads(resp.read().decode())
         except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
             raise ConnectionError(f"CoinGecko API request failed: {e}")
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            raise ConnectionError(f"Failed to parse CoinGecko response: {e}")
 
         if not data:
             raise ValueError("CoinGecko returned empty data")
@@ -82,14 +91,19 @@ class DataFetcher:
         # CoinGecko OHLC format: [timestamp, open, high, low, close]
         rows = []
         for candle in data:
-            rows.append([
-                float(candle[0]),  # timestamp
-                float(candle[1]),  # open
-                float(candle[2]),  # high
-                float(candle[3]),  # low
-                float(candle[4]),  # close
-                0.0,               # volume (not provided)
-            ])
+            if not isinstance(candle, (list, tuple)) or len(candle) < 5:
+                continue
+            try:
+                rows.append([
+                    float(candle[0]),  # timestamp
+                    float(candle[1]),  # open
+                    float(candle[2]),  # high
+                    float(candle[3]),  # low
+                    float(candle[4]),  # close
+                    0.0,               # volume (not provided)
+                ])
+            except (ValueError, TypeError):
+                continue
         return np.array(rows, dtype=float)
 
     def save_csv(self, candles: np.ndarray, filepath: str):

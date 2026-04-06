@@ -66,6 +66,8 @@ class AssetScanner:
                 return json.loads(resp.read().decode())
         except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
             raise ConnectionError(f"CoinGecko API request failed: {e}")
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            raise ConnectionError(f"Failed to parse CoinGecko response: {e}")
 
     def scan_trending(self, top_n: int = 5) -> List[Dict[str, Any]]:
         """Return trending crypto assets sorted by 24h volume.

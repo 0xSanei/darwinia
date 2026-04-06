@@ -15,7 +15,7 @@ make test
 
 1. Fork the repo and create a branch from `main`
 2. Make your changes
-3. Run `make test` — all 22 tests must pass
+3. Run `pytest tests/ -v` — all 84 tests must pass
 4. Submit a PR with a clear description
 
 ## What to contribute
@@ -42,7 +42,12 @@ darwinia/
 ├── arena/         # Adversarial attacks — the pressure
 ├── discovery/     # Pattern analysis — the insight
 ├── chronicle/     # History recording — the memory
-└── personality/   # Profiling + regime detection — the context
+├─��� personality/   # Profiling + regime detection — the context
+├── knowledge/     # Pattern marketplace and knowledge exchange
+├── data/          # Live data fetching (Binance, CoinGecko)
+├── macro/         # Macro regime simulation and regime-aware fitness
+├── integrations/  # Skill composability (SkillBridge, SkillRegistry)
+└── validation/    # Walk-forward validation and gene ablation
 ```
 
 The evolution engine is domain-agnostic. To adapt Darwinia to a new domain:

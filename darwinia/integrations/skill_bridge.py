@@ -13,6 +13,7 @@ from __future__ import annotations
 import copy
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
@@ -180,8 +181,8 @@ class SkillBridge:
         if "data" in config and config["data"] is not None:
             candles = np.asarray(config["data"])
         elif "data_path" in config:
-            data_dir = config["data_path"].rsplit("/", 1)[0] if "/" in config["data_path"] else "."
-            data_file = config["data_path"].rsplit("/", 1)[-1]
+            data_dir = os.path.dirname(config["data_path"]) or "."
+            data_file = os.path.basename(config["data_path"])
             market = MarketEnvironment(data_dir)
             candles = market.load_csv(data_file)
         else:
@@ -228,7 +229,13 @@ class SkillBridge:
         if not champions:
             raise RuntimeError("Evolution produced no champions.")
 
-        champ = champions[generation]
+        try:
+            champ = champions[generation]
+        except IndexError:
+            raise RuntimeError(
+                f"Generation {generation} out of range. "
+                f"Available: {len(champions)} generations."
+            )
         return {
             "id": champ.get("id", "unknown"),
             "generation": champ.get("generation", 0),

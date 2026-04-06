@@ -116,6 +116,13 @@ def cmd_evolve(args):
             }
 
         # Report best asset
+        if not all_results:
+            msg = "No results generated from any asset."
+            if json_mode:
+                print(json.dumps({"error": msg}))
+            else:
+                print(f"\n  {msg}")
+            return
         best_asset = max(all_results, key=lambda k: all_results[k]['fitness'])
         if json_mode:
             output = {
@@ -188,8 +195,17 @@ def cmd_arena(args):
         print(f"⚔️ Darwinia — Adversarial Arena")
 
     if args.champion:
-        with open(args.champion) as f:
-            dna = AgentDNA.from_dict(json.load(f))
+        try:
+            with open(args.champion) as f:
+                dna = AgentDNA.from_dict(json.load(f))
+        except FileNotFoundError:
+            msg = f"Champion file not found: {args.champion}"
+            print(json.dumps({"error": msg}) if json_mode else f"   Error: {msg}")
+            return
+        except json.JSONDecodeError:
+            msg = f"Invalid JSON in champion file: {args.champion}"
+            print(json.dumps({"error": msg}) if json_mode else f"   Error: {msg}")
+            return
         if not json_mode:
             print(f"   Testing champion: {dna.id}")
     else:
@@ -235,7 +251,7 @@ def cmd_validate(args):
         print(f"   Windows: {args.windows} | Generations per window: {args.generations}")
         print()
 
-    data_dir = os.path.dirname(args.data)
+    data_dir = os.path.dirname(args.data) or '.'
     data_file = os.path.basename(args.data)
     market = MarketEnvironment(data_dir)
     candles = market.load_csv(data_file)
@@ -288,8 +304,17 @@ def cmd_explain(args):
         print(f"🔍 Darwinia — Gene Ablation Analysis")
 
     if args.champion:
-        with open(args.champion) as f:
-            dna = AgentDNA.from_dict(json.load(f))
+        try:
+            with open(args.champion) as f:
+                dna = AgentDNA.from_dict(json.load(f))
+        except FileNotFoundError:
+            msg = f"Champion file not found: {args.champion}"
+            print(json.dumps({"error": msg}) if json_mode else f"   Error: {msg}")
+            return
+        except json.JSONDecodeError:
+            msg = f"Invalid JSON in champion file: {args.champion}"
+            print(json.dumps({"error": msg}) if json_mode else f"   Error: {msg}")
+            return
         if not json_mode:
             print(f"   Agent: {dna.id}")
     else:
@@ -297,7 +322,7 @@ def cmd_explain(args):
         if not json_mode:
             print(f"   Agent: seed_trend_follower")
 
-    data_dir = os.path.dirname(args.data)
+    data_dir = os.path.dirname(args.data) or '.'
     data_file = os.path.basename(args.data)
     market = MarketEnvironment(data_dir)
     candles = market.load_csv(data_file)
