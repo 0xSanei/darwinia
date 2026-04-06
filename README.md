@@ -12,7 +12,7 @@
   <a href="https://claude.ai"><img src="https://img.shields.io/badge/Claude_Code-compatible-blueviolet?style=flat-square" alt="Claude Code"></a>
   <img src="https://img.shields.io/badge/genes-17-gold?style=flat-square" alt="17 Genes">
   <img src="https://img.shields.io/badge/attacks-6_types-red?style=flat-square" alt="6 Attack Types">
-  <img src="https://img.shields.io/badge/tests-84_passing-brightgreen?style=flat-square" alt="84 Tests">
+  <img src="https://img.shields.io/badge/tests-111_passing-brightgreen?style=flat-square" alt="111 Tests">
   <a href="https://colab.research.google.com/github/0xSanei/darwinia/blob/main/notebooks/quickstart.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Colab"></a>
 </p>
 
@@ -236,6 +236,8 @@ python -m darwinia fetch BTCUSD --source coingecko  # Fetch from CoinGecko
 python -m darwinia scan                        # Discover trending crypto assets
 python -m darwinia scan --volatile             # Most volatile assets
 python -m darwinia scan --recommend            # Recommended pairs for evolution
+python -m darwinia analytics -g 20 -p 50       # Population convergence & clustering
+python -m darwinia tournament -n 8 -g 30       # Champion round-robin leaderboard
 python -m darwinia dashboard                   # Web UI
 python -m darwinia info --json                 # System info as JSON
 ```
@@ -270,7 +272,8 @@ darwinia/
 ├── data/          # Live data fetching (Binance, CoinGecko)
 ├── macro/         # Macro regime simulation and regime-aware fitness
 ├── integrations/  # Skill composability layer (SkillBridge, SkillRegistry)
-└── __main__.py    # CLI entry point
+├── analytics/     # Population statistics, clustering, diversity metrics
+└── __main__.py    # CLI entry point (12 commands)
 
 dashboard/         # Streamlit visualization (4 pages)
 scripts/           # Competitor monitoring, utilities
@@ -330,7 +333,7 @@ The evolution engine is **domain-agnostic**. The DNA → Fitness → Selection �
 
 ```bash
 make setup       # Install dependencies
-make test        # Run 84 tests
+make test        # Run 111 tests
 make evolve      # Run 50 generations
 make arena       # Adversarial arena
 make dashboard   # Streamlit dashboard
