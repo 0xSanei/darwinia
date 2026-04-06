@@ -451,6 +451,99 @@ def cmd_scan(args):
             print(f"Error: {e}")
 
 
+def cmd_tournament(args):
+    """Run tournament between evolved champion agents."""
+    from .core.dna import AgentDNA
+    from .arena.tournament import Tournament
+
+    json_mode = getattr(args, 'json', False)
+    top_n = args.top
+    generations = args.generations
+    population = args.population
+    rounds = args.rounds
+
+    if not json_mode:
+        print(f"Tournament Mode")
+        print(f"   Evolving population for {generations} generations...")
+
+    # Evolve a population to get champions
+    from .core.market import MarketEnvironment
+    from .evolution.engine import EvolutionEngine
+
+    data_dir = os.path.dirname(args.data) or '.'
+    data_file = os.path.basename(args.data)
+    market = MarketEnvironment(data_dir)
+    candles = market.load_csv(data_file)
+
+    config = {
+        'population_size': population,
+        'seed_ratio': 0.2,
+        'arena_start_gen': min(5, generations // 2),
+        'output_dir': args.output,
+    }
+
+    engine = EvolutionEngine(config)
+    engine.load_data(candles)
+
+    def progress(gen, stats):
+        if json_mode:
+            return
+        champ = stats['champion_fitness']
+        avg = stats['avg_fitness']
+        filled = max(0, min(20, int(champ * 20)))
+        bar = chr(9608) * filled + chr(9617) * (20 - filled)
+        print(f"   Gen {gen:3d} | {bar} | champ={champ:.4f} avg={avg:.4f}")
+
+    results = engine.run(generations=generations, callback=progress)
+
+    # Take top N agents from final population
+    final_agents = sorted(
+        engine.population.agents, key=lambda a: a.fitness, reverse=True
+    )
+    champions = final_agents[:top_n]
+
+    if not json_mode:
+        print(f"\n   Top {len(champions)} champions selected. Running tournament...")
+
+    # Run tournament
+    tournament = Tournament(rounds_per_match=rounds)
+    for dna in champions:
+        tournament.add_contestant(dna)
+
+    tournament.run(verbose=not json_mode)
+    leaderboard = tournament.get_leaderboard()
+
+    if json_mode:
+        output = {
+            "tournament": {
+                "contestants": len(champions),
+                "rounds_per_match": rounds,
+                "generations_evolved": generations,
+            },
+            "leaderboard": leaderboard,
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print(f"\n{'=' * 65}")
+        print(f"  TOURNAMENT LEADERBOARD")
+        print(f"{'=' * 65}")
+        print(
+            f"  {'Rank':<6}{'Agent':<10}{'W':>4}{'L':>4}{'D':>4}"
+            f"{'Survival':>12}{'Avg PnL':>12}"
+        )
+        print(f"  {'-' * 58}")
+        for entry in leaderboard:
+            rank_str = f"#{entry['rank']}"
+            survival_str = f"{entry['survival_rate']:.1%}"
+            pnl_str = f"{entry['avg_pnl']:+.2%}"
+            print(
+                f"  {rank_str:<6}{entry['agent_id']:<10}"
+                f"{entry['wins']:>4}{entry['losses']:>4}{entry['draws']:>4}"
+                f"{survival_str:>12}{pnl_str:>12}"
+            )
+        print(f"{'=' * 65}")
+
+
 def cmd_dashboard(args):
     """Launch Streamlit dashboard."""
     import subprocess
@@ -458,6 +551,87 @@ def cmd_dashboard(args):
     dashboard_path = os.path.abspath(dashboard_path)
     print(f"🧬 Launching Darwinia Dashboard...")
     subprocess.run(["streamlit", "run", dashboard_path, "--server.headless", "true"])
+
+
+def cmd_analytics(args):
+    """Run population analytics."""
+    from .core.dna import AgentDNA
+    from .analytics.population import PopulationAnalyzer
+
+    json_mode = getattr(args, 'json', False)
+    pop_size = args.population
+    generations = args.generations
+
+    if not json_mode:
+        print(f"Darwinia -- Population Analytics")
+        print(f"   Generations: {generations} | Population: {pop_size}")
+        print()
+
+    # Build a population via quick random evolution (selection + mutation)
+    population = [AgentDNA.random(generation=0) for _ in range(pop_size)]
+
+    for gen in range(generations):
+        # Simple tournament selection + mutation to create realistic population
+        population.sort(key=lambda a: a.fitness, reverse=True)
+        # Assign synthetic fitness based on gene coherence
+        for agent in population:
+            genes = agent.get_genes()
+            vals = list(genes.values())
+            # Fitness = reward agents whose signal weights align with personality
+            signal_sum = sum(vals[:5])
+            personality_sum = sum(vals[9:14])
+            agent.fitness = (signal_sum + personality_sum) / 10.0 + 0.1 * (1.0 - abs(vals[5] - vals[6]))
+
+        # Selection: keep top half, breed next gen
+        half = max(2, pop_size // 2)
+        parents = population[:half]
+        next_gen = list(parents)
+        import random as _rnd
+        while len(next_gen) < pop_size:
+            p1 = _rnd.choice(parents)
+            p2 = _rnd.choice(parents)
+            child = p1.crossover(p2).mutate(mutation_rate=0.2, mutation_strength=0.08)
+            child.generation = gen + 1
+            next_gen.append(child)
+        population = next_gen[:pop_size]
+
+    # Final fitness assignment
+    for agent in population:
+        genes = agent.get_genes()
+        vals = list(genes.values())
+        signal_sum = sum(vals[:5])
+        personality_sum = sum(vals[9:14])
+        agent.fitness = (signal_sum + personality_sum) / 10.0 + 0.1 * (1.0 - abs(vals[5] - vals[6]))
+
+    analyzer = PopulationAnalyzer(population)
+
+    if json_mode:
+        print(json.dumps(analyzer.to_dict(), indent=2))
+    else:
+        conv = analyzer.convergence_score()
+        print(f"   Convergence score: {conv:.4f}")
+        print()
+
+        div = analyzer.diversity_metrics()
+        print(f"   Mean Shannon entropy: {div['mean_entropy']:.4f}")
+        print(f"   Effective population size: {div['effective_population_size']:.1f}")
+        print()
+
+        corr = analyzer.gene_correlations()
+        if corr['top_pairs']:
+            print(f"   Top gene correlations:")
+            for pair in corr['top_pairs'][:5]:
+                sign = '+' if pair['correlation'] >= 0 else ''
+                print(f"     {pair['gene_a']:25s} <-> {pair['gene_b']:25s}  {sign}{pair['correlation']:.4f}")
+            print()
+
+        clusters = analyzer.cluster_agents()
+        print(f"   Clusters ({len(clusters)}):")
+        for i, cluster in enumerate(clusters):
+            print(f"     Cluster {i}: {len(cluster)} agents")
+
+        fdist = analyzer.fitness_distribution()
+        print(f"\n   Fitness: mean={fdist['mean']:.4f}  median={fdist['median']:.4f}  std={fdist['std']:.4f}")
 
 
 def cmd_info(args):
@@ -566,6 +740,24 @@ def main():
     p_scan.add_argument("--top", type=int, default=5, help="Number of assets to show (default: 5)")
     p_scan.add_argument("--json", action="store_true", help="Output results as JSON")
     p_scan.set_defaults(func=cmd_scan)
+
+    # tournament
+    p_tourn = subparsers.add_parser("tournament", help="Run tournament between evolved champions")
+    p_tourn.add_argument("-n", "--top", type=int, default=5, help="Number of top agents for tournament (default: 5)")
+    p_tourn.add_argument("-g", "--generations", type=int, default=50, help="Evolution generations (default: 50)")
+    p_tourn.add_argument("-p", "--population", type=int, default=50, help="Population size (default: 50)")
+    p_tourn.add_argument("-r", "--rounds", type=int, default=5, help="Rounds per match (default: 5)")
+    p_tourn.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
+    p_tourn.add_argument("-o", "--output", default="output", help="Output directory")
+    p_tourn.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_tourn.set_defaults(func=cmd_tournament)
+
+    # analytics
+    p_analytics = subparsers.add_parser("analytics", help="Population analytics and statistics")
+    p_analytics.add_argument("-g", "--generations", type=int, default=10, help="Generations to evolve (default: 10)")
+    p_analytics.add_argument("-p", "--population", type=int, default=50, help="Population size (default: 50)")
+    p_analytics.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_analytics.set_defaults(func=cmd_analytics)
 
     # dashboard
     p_dash = subparsers.add_parser("dashboard", help="Launch Streamlit dashboard")
