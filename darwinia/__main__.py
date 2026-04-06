@@ -50,10 +50,40 @@ def _run_single_evolve(args, data_dir, data_file, json_mode):
     return results
 
 
+def _print_macro_summary(signals, json_mode):
+    """Print a summary of the generated macro regime overlay."""
+    from collections import Counter
+    from .macro.regime import MacroRegime
+
+    counts = Counter(s.regime for s in signals)
+    total = len(signals)
+    if json_mode:
+        return
+    print(f"   Macro Regime Overlay: {total} days")
+    for regime in MacroRegime:
+        n = counts.get(regime, 0)
+        pct = 100.0 * n / total if total else 0
+        print(f"     {regime.value:12s}: {n:4d} days ({pct:5.1f}%)")
+    print()
+
+
 def cmd_evolve(args):
     """Run evolution."""
     json_mode = getattr(args, 'json', False)
     multi = getattr(args, 'multi', False)
+    macro_enabled = getattr(args, 'macro', False)
+
+    # Generate macro regime overlay if requested
+    macro_signals = None
+    if macro_enabled:
+        from .macro.regime import MacroSimulator
+        sim = MacroSimulator(seed=42)
+        # Use generations * 10 as proxy for number of simulated days
+        n_days = max(args.generations * 10, 100)
+        macro_signals = sim.generate_regime_sequence(n_days)
+        if not json_mode:
+            print(f"   Macro mode enabled")
+            _print_macro_summary(macro_signals, json_mode)
 
     if multi:
         # Multi-asset mode: auto-load all CSVs in data/ directory
@@ -351,6 +381,51 @@ def cmd_fetch(args):
             print(f"\n   Error: {e}")
 
 
+def cmd_scan(args):
+    """Scan for trending or volatile crypto assets."""
+    from .discovery.asset_scanner import AssetScanner
+
+    json_mode = getattr(args, 'json', False)
+    scanner = AssetScanner()
+
+    try:
+        if args.recommend:
+            pairs = scanner.recommend_for_evolution()
+            if json_mode:
+                print(json.dumps({"recommended_pairs": pairs}, indent=2))
+            else:
+                print("Recommended pairs for evolution:")
+                for p in pairs:
+                    print(f"  {p}")
+            return
+
+        if args.volatile:
+            assets = scanner.scan_volatile(top_n=args.top)
+            label = "Most Volatile"
+        else:
+            assets = scanner.scan_trending(top_n=args.top)
+            label = "Trending"
+
+        if json_mode:
+            print(json.dumps({"assets": assets, "mode": label.lower()}, indent=2))
+        else:
+            print(f"{label} Assets (top {args.top}):")
+            print(f"  {'Rank':<6}{'Symbol':<10}{'Name':<20}{'24h %':>10}{'Volume':>18}")
+            print(f"  {'─' * 64}")
+            for a in assets:
+                chg = a['price_change_24h']
+                sign = '+' if chg >= 0 else ''
+                vol = f"${a['volume_24h']:,.0f}"
+                print(f"  {a['market_cap_rank']:<6}{a['symbol']:<10}{a['name']:<20}"
+                      f"{sign}{chg:>9.2f}%{vol:>18}")
+
+    except ConnectionError as e:
+        if json_mode:
+            print(json.dumps({"error": str(e)}, indent=2))
+        else:
+            print(f"Error: {e}")
+
+
 def cmd_dashboard(args):
     """Launch Streamlit dashboard."""
     import subprocess
@@ -422,6 +497,7 @@ def main():
     p_evolve.add_argument("-o", "--output", default="output", help="Output directory")
     p_evolve.add_argument("--arena-start", type=int, default=5, help="Generation to start adversarial arena (default: 5)")
     p_evolve.add_argument("--multi", action="store_true", help="Auto-load all CSVs in data/ and evolve on each")
+    p_evolve.add_argument("--macro", action="store_true", help="Enable macro regime overlay with MacroAwareFitness")
     p_evolve.add_argument("--json", action="store_true", help="Output results as JSON")
     p_evolve.set_defaults(func=cmd_evolve)
 
@@ -457,6 +533,14 @@ def main():
     p_fetch.add_argument("--source", default="binance", choices=["binance", "coingecko"], help="Data source (default: binance)")
     p_fetch.add_argument("--json", action="store_true", help="Output results as JSON")
     p_fetch.set_defaults(func=cmd_fetch)
+
+    # scan
+    p_scan = subparsers.add_parser("scan", help="Discover trending/volatile assets for evolution")
+    p_scan.add_argument("--volatile", action="store_true", help="Sort by volatility instead of volume")
+    p_scan.add_argument("--recommend", action="store_true", help="Show recommended pairs for evolution")
+    p_scan.add_argument("--top", type=int, default=5, help="Number of assets to show (default: 5)")
+    p_scan.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_scan.set_defaults(func=cmd_scan)
 
     # dashboard
     p_dash = subparsers.add_parser("dashboard", help="Launch Streamlit dashboard")

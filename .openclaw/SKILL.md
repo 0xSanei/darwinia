@@ -90,6 +90,88 @@ pip install -e ".[dev]"
 
 No API keys. No cloud. Pure Python + numpy. BTC/USDT 1h data (10,946 candles) included.
 
+## Composability
+
+Darwinia exposes a two-way composability interface so it can interoperate with other ClawHub / OpenClaw skills.
+
+### Other skills call Darwinia (SkillBridge API)
+
+```python
+from darwinia.integrations import SkillBridge
+
+bridge = SkillBridge()
+
+# Run evolution and get results as a dict
+result = bridge.evolve({
+    "generations": 20,
+    "population_size": 30,
+    "data_path": "data/btc_1h.csv",
+})
+
+# Get the champion agent
+champion = bridge.get_champion()  # latest generation
+champion = bridge.get_champion(generation=10)  # specific generation
+
+# Evaluate any arbitrary strategy DNA (17 floats)
+score = bridge.evaluate_strategy([0.8, 0.5, 0.3, 0.5, 0.9, 0.6, 0.4, 0.05, 0.1,
+                                   0.4, 0.7, 0.1, 0.7, 0.5, 0.6, 0.5, 0.8])
+
+# Detect current market regime
+regime = bridge.get_market_regime()
+# => {"regime": "trending_up", "confidence": 0.82, ...}
+```
+
+### Darwinia calls other skills (SkillRegistry)
+
+```python
+from darwinia.integrations import SkillRegistry
+
+registry = SkillRegistry()
+
+# Register an external skill endpoint
+registry.register("macro-liquidity", my_macro_function)
+registry.register("crypto-market-rank", my_ranking_function)
+
+# Call registered skills
+macro = registry.call("macro-liquidity", indicator="fed_net_liquidity")
+trending = registry.call("crypto-market-rank", category="trending", limit=10)
+
+# List available skills
+print(registry.list_skills())
+```
+
+### Example pipeline: macro-liquidity -> Darwinia -> evolved strategy
+
+```python
+from darwinia.integrations import SkillBridge, SkillRegistry
+
+registry = SkillRegistry()
+registry.register("macro-liquidity", get_macro_signals)
+
+# 1. Pull macro context
+macro = registry.call("macro-liquidity")
+
+# 2. Adjust evolution config based on macro regime
+config = {
+    "generations": 50,
+    "population_size": 50,
+    "data_path": "data/btc_1h.csv",
+}
+if macro.get("yen_carry_signal") == "risk_off":
+    config["seed_ratio"] = 0.4  # more conservative seeds
+
+# 3. Evolve
+bridge = SkillBridge()
+result = bridge.evolve(config)
+
+# 4. Output champion strategy
+champion = bridge.get_champion()
+print(f"Best fitness: {champion['fitness']}")
+print(f"Market regime: {bridge.get_market_regime()['regime']}")
+```
+
+Built-in integration templates available for: `macro-liquidity`, `crypto-market-rank`, `okx-dex-market`.
+
 ## Important
 
 - Simulation only. Does NOT execute real trades.

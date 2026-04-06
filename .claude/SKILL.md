@@ -53,4 +53,37 @@ Adaptation (3): regime_sensitivity, memory_length, noise_filter
 rug_pull, fake_breakout, slow_bleed, whipsaw, volume_mirage, pump_and_dump
 Arena reads agent DNA to find weaknesses and generates targeted scenarios.
 
+## Composability
+
+Darwinia provides a two-way composability interface for cross-skill interop.
+
+### Inbound: other skills call Darwinia (SkillBridge)
+
+```python
+from darwinia.integrations import SkillBridge
+
+bridge = SkillBridge()
+result = bridge.evolve({"generations": 20, "population_size": 30, "data_path": "data/btc_1h.csv"})
+champion = bridge.get_champion()
+score = bridge.evaluate_strategy([0.5] * 17)
+regime = bridge.get_market_regime()
+```
+
+Methods: `evolve(config) -> dict`, `get_champion(gen) -> dict`, `evaluate_strategy(dna) -> dict`, `get_market_regime() -> dict`
+
+### Outbound: Darwinia calls other skills (SkillRegistry)
+
+```python
+from darwinia.integrations import SkillRegistry
+
+registry = SkillRegistry()
+registry.register("macro-liquidity", my_func)
+result = registry.call("macro-liquidity", indicator="fed_net_liquidity")
+print(registry.list_skills())
+```
+
+### Pipeline example: macro-liquidity -> Darwinia -> strategy
+
+Pull macro signals, bias evolution config, evolve, output champion. Built-in templates for: `macro-liquidity`, `crypto-market-rank`, `okx-dex-market`.
+
 ## Simulation only — does NOT execute real trades.
