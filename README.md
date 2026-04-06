@@ -12,7 +12,7 @@
   <a href="https://claude.ai"><img src="https://img.shields.io/badge/Claude_Code-compatible-blueviolet?style=flat-square" alt="Claude Code"></a>
   <img src="https://img.shields.io/badge/genes-17-gold?style=flat-square" alt="17 Genes">
   <img src="https://img.shields.io/badge/attacks-6_types-red?style=flat-square" alt="6 Attack Types">
-  <img src="https://img.shields.io/badge/tests-45_passing-brightgreen?style=flat-square" alt="45 Tests">
+  <img src="https://img.shields.io/badge/tests-84_passing-brightgreen?style=flat-square" alt="84 Tests">
   <a href="https://colab.research.google.com/github/0xSanei/darwinia/blob/main/notebooks/quickstart.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Colab"></a>
 </p>
 
@@ -230,8 +230,12 @@ python -m darwinia arena -r 10 --json          # 10 rounds, JSON output
 python -m darwinia validate -w 3 -g 20         # Walk-forward overfitting check
 python -m darwinia explain -c champion.json    # Gene ablation analysis
 python -m darwinia evolve --multi               # Multi-asset evolution (BTC+ETH+SOL)
+python -m darwinia evolve --macro              # Macro-aware evolution (regime overlay)
 python -m darwinia fetch ETHUSDT -i 4h -d 90   # Fetch live data from Binance
 python -m darwinia fetch BTCUSD --source coingecko  # Fetch from CoinGecko
+python -m darwinia scan                        # Discover trending crypto assets
+python -m darwinia scan --volatile             # Most volatile assets
+python -m darwinia scan --recommend            # Recommended pairs for evolution
 python -m darwinia dashboard                   # Web UI
 python -m darwinia info --json                 # System info as JSON
 ```
@@ -264,6 +268,8 @@ darwinia/
 ├── personality/   # Personality profiling + market regime detection
 ├── knowledge/     # Layer 3: Pattern marketplace and knowledge exchange
 ├── data/          # Live data fetching (Binance, CoinGecko)
+├── macro/         # Macro regime simulation and regime-aware fitness
+├── integrations/  # Skill composability layer (SkillBridge, SkillRegistry)
 └── __main__.py    # CLI entry point
 
 dashboard/         # Streamlit visualization (4 pages)
@@ -283,6 +289,26 @@ python -m darwinia validate -w 3 --json
 ```bash
 python -m darwinia explain -c champion.json --json
 ```
+
+### Macro-Aware Evolution
+
+Standard backtests ignore macro conditions. With `--macro`, Darwinia generates a regime overlay (risk-on, risk-off, transition) and rewards agents that adapt position sizing to macro state. Agents that go full-size during risk-off get penalized. Agents that scale down survive.
+
+```bash
+python -m darwinia evolve --macro --json
+```
+
+### Asset Auto-Discovery
+
+Instead of hardcoding which asset to train on, `scan` finds high-volume volatile assets — the best training data for genetic evolution.
+
+```bash
+python -m darwinia scan --recommend --json
+```
+
+### Skill Composability
+
+Darwinia exposes a `SkillBridge` API for other ClawHub skills to call it programmatically, and a `SkillRegistry` for Darwinia to call external skills (macro-liquidity, crypto-market-rank, okx-dex-market). This makes Darwinia a composable building block in multi-skill agent workflows.
 
 ### Three Layers
 
@@ -304,7 +330,7 @@ The evolution engine is **domain-agnostic**. The DNA → Fitness → Selection �
 
 ```bash
 make setup       # Install dependencies
-make test        # Run 45 tests
+make test        # Run 84 tests
 make evolve      # Run 50 generations
 make arena       # Adversarial arena
 make dashboard   # Streamlit dashboard
