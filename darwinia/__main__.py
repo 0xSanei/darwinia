@@ -651,12 +651,27 @@ def cmd_info(args):
         except Exception:
             pass
 
+    # Count tests
+    test_dir = os.path.join(project_root, 'tests')
+    test_count = 0
+    if os.path.isdir(test_dir):
+        for tf in glob_mod.glob(os.path.join(test_dir, 'test_*.py')):
+            try:
+                with open(tf) as fh:
+                    test_count += sum(1 for line in fh if line.strip().startswith('def test_'))
+            except Exception:
+                pass
+
     info = {
         "name": "Darwinia",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "description": "The Self-Evolving Agent Ecosystem",
         "genes": 17,
         "attack_types": 6,
+        "commands": 12,
+        "modules": ["core", "evolution", "arena", "discovery", "chronicle",
+                     "personality", "knowledge", "data", "macro", "integrations", "analytics", "validation"],
+        "tests": test_count,
         "data_candles": candle_count,
         "data_files": [os.path.basename(f) for f in data_files],
         "python_version": sys.version,
@@ -668,15 +683,17 @@ def cmd_info(args):
     else:
         print("🧬 Darwinia — The Self-Evolving Agent Ecosystem")
         print()
-        print(f"  Version: 1.0.0")
-        print(f"  Data:    {candle_count:,} candles from {len(data_files)} file(s)")
-        print(f"  Genes:   17 | Attack types: 6")
+        print(f"  Version:  1.1.0")
+        print(f"  Modules:  {len(info['modules'])} | Tests: {test_count}")
+        print(f"  Data:     {candle_count:,} candles from {len(data_files)} file(s)")
+        print(f"  Genes:    17 | Attack types: 6")
         print()
         print("  Commands:")
-        print("    python -m darwinia evolve     Run evolution")
-        print("    python -m darwinia arena      Test against adversary")
-        print("    python -m darwinia dashboard  Launch web dashboard")
-        print("    python -m darwinia info       System info")
+        print("    evolve      Run genetic evolution          arena       Adversarial stress test")
+        print("    validate    Walk-forward overfit check     explain     Gene ablation analysis")
+        print("    fetch       Download live market data      scan        Discover trending assets")
+        print("    analytics   Population statistics          tournament  Champion round-robin")
+        print("    dashboard   Streamlit web UI               info        System info")
         print()
         print("  GitHub: https://github.com/0xSanei/darwinia")
 
