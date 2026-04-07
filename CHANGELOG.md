@@ -1,0 +1,46 @@
+# Changelog
+
+All notable changes to Darwinia are documented here.
+
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+
+## [1.1.0] - 2026-04-07
+
+### Added
+- Population analytics with convergence scoring, clustering, and diversity metrics
+- Tournament mode for champion round-robin competition with leaderboard
+- Macro-aware evolution with regime detection (risk-on, risk-off, transition overlay)
+- Asset auto-discovery via `scan` command (trending, volatile, recommended pairs)
+- Skill composability layer with SkillBridge and SkillRegistry for multi-skill agent workflows
+- Multi-asset evolution (`--multi` flag) to train across all CSVs in data directory
+- Live data fetching from Binance and CoinGecko via `fetch` command
+- Layer 3 Knowledge Protocol for trading discovered patterns through a marketplace
+- Archetype benchmarks comparing all seed strategies
+
+### Changed
+- `info` command now displays all 12 available commands
+- README updated with full CLI reference, architecture diagram, and badge counts
+
+### Fixed
+- Hardened error handling across CLI commands
+- Fixed Windows path resolution bug in data loading
+
+## [1.0.0] - 2026-04-04
+
+### Added
+- Core genetic algorithm engine with 17-gene DNA and natural selection
+- Adversarial arena with 6 attack types (rug pull, fake breakout, slow bleed, whipsaw, volume mirage, pump & dump)
+- Pattern discovery system that identifies gene convergence and linked-gene combos
+- Walk-forward validation for overfitting detection
+- Gene ablation explainability system
+- Layer 2 Personality Engine with quantified trading personalities and market regime detection
+- CLI entry point with `evolve`, `arena`, `validate`, `explain`, and `dashboard` commands
+- `--json` output flag on all commands for agent integration
+- Streamlit dashboard with 4 interactive views (evolution, family tree, arms race, discoveries)
+- OpenClaw and Claude Code skill integration
+- Colab quickstart notebook for one-click demo
+- Animated demo GIF
+- CI pipeline with coverage reporting and CLI smoke tests
+- Comprehensive test suite
+- pyproject.toml with full metadata and entry points
+- BTC/USDT 1h sample data included

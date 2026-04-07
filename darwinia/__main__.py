@@ -7,6 +7,8 @@ import sys
 import json
 import os
 
+from darwinia._version import __version__
+
 if sys.platform == "win32":
     os.environ["PYTHONIOENCODING"] = "utf-8"
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -634,6 +636,127 @@ def cmd_analytics(args):
         print(f"\n   Fitness: mean={fdist['mean']:.4f}  median={fdist['median']:.4f}  std={fdist['std']:.4f}")
 
 
+def cmd_repair(args):
+    """Check strategy health and auto-repair if degraded."""
+    import numpy as np
+    from .core.dna import AgentDNA
+    from .core.market import MarketEnvironment
+    from .core.agent import TradingAgent
+    from .evolution.fitness import FitnessEvaluator
+    from .repair.monitor import HealthMonitor
+    from .repair.auto_repair import AutoRepair
+
+    json_mode = getattr(args, 'json', False)
+    method = getattr(args, 'method', 'targeted')
+
+    if not json_mode:
+        print(f"Darwinia -- Self-Repair")
+
+    # Load champion DNA
+    if args.champion:
+        try:
+            with open(args.champion) as f:
+                dna = AgentDNA.from_dict(json.load(f))
+        except FileNotFoundError:
+            msg = f"Champion file not found: {args.champion}"
+            print(json.dumps({"error": msg}) if json_mode else f"   Error: {msg}")
+            return
+        except json.JSONDecodeError:
+            msg = f"Invalid JSON in champion file: {args.champion}"
+            print(json.dumps({"error": msg}) if json_mode else f"   Error: {msg}")
+            return
+        if not json_mode:
+            print(f"   Agent: {dna.id}")
+    else:
+        dna = AgentDNA.seed_trend_follower()
+        if not json_mode:
+            print(f"   Agent: seed_trend_follower")
+
+    # Load market data
+    data_dir = os.path.dirname(args.data) or '.'
+    data_file = os.path.basename(args.data)
+    market = MarketEnvironment(data_dir)
+    candles = market.load_csv(data_file)
+    candles = candles[:min(2000, len(candles))]
+
+    if not json_mode:
+        print(f"   Data: {len(candles)} candles from {data_file}")
+        print()
+
+    # Evaluate current fitness
+    fitness_eval = FitnessEvaluator()
+    agent = TradingAgent(dna)
+    trades = agent.run(candles)
+    current_fitness = fitness_eval.evaluate(trades).composite
+
+    # Health check — use stored fitness as baseline, fall back to current
+    monitor = HealthMonitor(degradation_threshold=0.3)
+    baseline = dna.fitness if dna.fitness > 0 else current_fitness
+    monitor.set_baseline(baseline)
+    health = monitor.check(current_fitness)
+
+    if not json_mode:
+        status = "HEALTHY" if health.is_healthy else "DEGRADED"
+        print(f"   Health Check:")
+        print(f"     Baseline fitness:  {health.fitness_baseline:.4f}")
+        print(f"     Current fitness:   {health.fitness_current:.4f}")
+        print(f"     Degradation:       {health.degradation_pct:.1%}")
+        print(f"     Status:            {status}")
+        print(f"     Diagnosis:         {health.diagnosis}")
+        print()
+
+    if health.is_healthy:
+        if not json_mode:
+            print(f"   Agent is healthy. No repair needed.")
+        if json_mode:
+            print(json.dumps({
+                "health": {
+                    "baseline": round(baseline, 4),
+                    "current": round(current_fitness, 4),
+                    "degradation_pct": round(health.degradation_pct, 4),
+                    "is_healthy": True,
+                },
+                "repair": None,
+            }, indent=2))
+        return
+
+    # Diagnose
+    if not json_mode:
+        print(f"   Diagnosing...")
+        diagnosis = monitor.diagnose(dna, candles)
+        print(f"   {diagnosis}")
+        print()
+
+    # Repair
+    if not json_mode:
+        print(f"   Repairing (method={method})...")
+
+    auto_repair = AutoRepair(monitor)
+    result = auto_repair.repair(dna, candles, method=method)
+
+    if json_mode:
+        output = {
+            "health": {
+                "baseline": round(baseline, 4),
+                "current": round(current_fitness, 4),
+                "degradation_pct": round(health.degradation_pct, 4),
+                "is_healthy": False,
+            },
+            "repair": result.to_dict(),
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        sign = "+" if result.improvement_pct >= 0 else ""
+        print(f"\n   Repair Result:")
+        print(f"     Original fitness:  {result.original_fitness:.4f}")
+        print(f"     Repaired fitness:  {result.repaired_fitness:.4f}")
+        print(f"     Improvement:       {sign}{result.improvement_pct:.1%}")
+        print(f"     Genes modified:    {len(result.genes_modified)}")
+        if result.genes_modified:
+            print(f"     Modified genes:    {', '.join(result.genes_modified)}")
+        print(f"     Method:            {result.repair_method}")
+
+
 def cmd_info(args):
     """Show project info."""
     import glob as glob_mod
@@ -664,13 +787,13 @@ def cmd_info(args):
 
     info = {
         "name": "Darwinia",
-        "version": "1.1.0",
+        "version": __version__,
         "description": "The Self-Evolving Agent Ecosystem",
         "genes": 17,
         "attack_types": 6,
-        "commands": 12,
+        "commands": 13,
         "modules": ["core", "evolution", "arena", "discovery", "chronicle",
-                     "personality", "knowledge", "data", "macro", "integrations", "analytics", "validation"],
+                     "personality", "knowledge", "data", "macro", "integrations", "analytics", "validation", "repair"],
         "tests": test_count,
         "data_candles": candle_count,
         "data_files": [os.path.basename(f) for f in data_files],
@@ -683,7 +806,7 @@ def cmd_info(args):
     else:
         print("🧬 Darwinia — The Self-Evolving Agent Ecosystem")
         print()
-        print(f"  Version:  1.1.0")
+        print(f"  Version:  {__version__}")
         print(f"  Modules:  {len(info['modules'])} | Tests: {test_count}")
         print(f"  Data:     {candle_count:,} candles from {len(data_files)} file(s)")
         print(f"  Genes:    17 | Attack types: 6")
@@ -703,6 +826,7 @@ def main():
         prog="darwinia",
         description="Darwinia — The Self-Evolving Agent Ecosystem"
     )
+    parser.add_argument('--version', action='version', version=f'darwinia {__version__}')
     subparsers = parser.add_subparsers(dest="command")
 
     # evolve
@@ -775,6 +899,15 @@ def main():
     p_analytics.add_argument("-p", "--population", type=int, default=50, help="Population size (default: 50)")
     p_analytics.add_argument("--json", action="store_true", help="Output results as JSON")
     p_analytics.set_defaults(func=cmd_analytics)
+
+    # repair
+    p_repair = subparsers.add_parser("repair", help="Check strategy health and auto-repair")
+    p_repair.add_argument("-c", "--champion", help="Path to champion JSON file")
+    p_repair.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
+    p_repair.add_argument("--method", default="targeted", choices=["targeted", "full", "ensemble"],
+                          help="Repair method (default: targeted)")
+    p_repair.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_repair.set_defaults(func=cmd_repair)
 
     # dashboard
     p_dash = subparsers.add_parser("dashboard", help="Launch Streamlit dashboard")

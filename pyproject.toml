@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "darwinia"
-version = "1.0.0"
+dynamic = ["version"]
 description = "The Self-Evolving Agent Ecosystem — Trading agents that evolve through Darwinian selection and adversarial self-play"
 readme = "README.md"
 license = {text = "MIT"}
@@ -49,6 +49,9 @@ darwinia = "darwinia.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["darwinia*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "darwinia._version.__version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
