@@ -4,6 +4,21 @@ All notable changes to Darwinia are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [1.2.0] - 2026-04-08
+
+### Added
+- Backtesting engine with full quantitative performance metrics (Sharpe, Sortino, Calmar, max drawdown, profit factor, win rate)
+- Walk-forward backtesting with rolling windows for stability analysis
+- Multi-asset backtesting to test strategy generalization across markets
+- Comparative backtesting to rank multiple strategies on the same data
+- Strategy export/import as portable JSON (`darwinia-strategy-v1` format)
+- `backtest` CLI command with `--walk-forward`, `--multi`, `--train-ratio` flags
+- `export` CLI command for strategy serialization
+
+### Changed
+- CLI now has 15 commands (up from 13)
+- Info command updated with new command listing
+
 ## [1.1.0] - 2026-04-07
 
 ### Added

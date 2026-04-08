@@ -6,6 +6,7 @@ import argparse
 import sys
 import json
 import os
+from datetime import datetime, timezone
 
 from darwinia._version import __version__
 
@@ -757,6 +758,172 @@ def cmd_repair(args):
         print(f"     Method:            {result.repair_method}")
 
 
+def cmd_backtest(args):
+    """Run backtest with full performance metrics."""
+    from .backtest.engine import BacktestEngine
+    from .core.dna import AgentDNA
+
+    json_mode = getattr(args, 'json', False)
+    data_file = os.path.basename(args.data)
+    data_dir = os.path.dirname(args.data) or 'data'
+
+    # Load champion DNA
+    dna = _load_champion_dna(args)
+
+    engine = BacktestEngine(data_dir=data_dir)
+
+    if args.multi:
+        if not json_mode:
+            print("\n🧬 Darwinia Backtest — Multi-Asset")
+            print(f"   Strategy: {dna.id}\n")
+        result = engine.multi_asset(dna)
+        if json_mode:
+            # Strip non-serializable fields
+            print(json.dumps({
+                'mode': result['mode'],
+                'assets_tested': result['assets_tested'],
+                'avg_sharpe': result['avg_sharpe'],
+                'avg_return_pct': result['avg_return_pct'],
+                'results': result['results'],
+            }, indent=2))
+        else:
+            print(f"   Assets tested: {result['assets_tested']}")
+            print(f"   Avg Sharpe:    {result['avg_sharpe']:.4f}")
+            print(f"   Avg Return:    {result['avg_return_pct']:+.2%}")
+            print()
+            for r in result['results']:
+                if 'error' in r:
+                    print(f"   ✗ {r['asset']}: {r['error']}")
+                else:
+                    m = r['metrics']
+                    print(f"   ✓ {r['asset']}: Sharpe={m['sharpe_ratio']:.4f} Return={m['total_return_pct']:+.2%} Trades={m['num_trades']}")
+        return
+
+    if args.walk_forward:
+        if not json_mode:
+            print(f"\n🧬 Darwinia Backtest — Walk-Forward ({args.windows} windows)")
+            print(f"   Data: {data_file} | Strategy: {dna.id}\n")
+        result = engine.walk_forward(dna, data_file, n_windows=args.windows)
+        if json_mode:
+            print(json.dumps({
+                'mode': result['mode'],
+                'n_windows': result['n_windows'],
+                'total_trades': result['total_trades'],
+                'aggregate': result['aggregate'].to_dict(),
+                'windows': result['windows'],
+            }, indent=2))
+        else:
+            for w in result['windows']:
+                m = w['metrics']
+                print(f"   Window {w['window']}: Sharpe={m['sharpe_ratio']:.4f} Return={m['total_return_pct']:+.2%} Trades={w['num_trades']}")
+            print(f"\n{result['aggregate'].summary()}")
+        return
+
+    # Single-pass backtest
+    if not json_mode:
+        print(f"\n🧬 Darwinia Backtest")
+        print(f"   Data: {data_file} | Strategy: {dna.id}")
+        if args.train_ratio > 0:
+            print(f"   Out-of-sample: {1 - args.train_ratio:.0%}\n")
+        else:
+            print(f"   Mode: full dataset\n")
+
+    result = engine.run(dna, data_file, train_ratio=args.train_ratio)
+
+    if json_mode:
+        print(json.dumps({
+            'asset': result['asset'],
+            'label': result['label'],
+            'candles': result['candles'],
+            'metrics': result['metrics'].to_dict(),
+            'num_trades': len(result['trades']),
+        }, indent=2))
+    else:
+        print(result['metrics'].summary())
+
+
+def _load_champion_dna(args):
+    """Load champion DNA from file or create default."""
+    from .core.dna import AgentDNA
+
+    champion_path = getattr(args, 'champion', None)
+    if champion_path and os.path.exists(champion_path):
+        with open(champion_path) as f:
+            data = json.load(f)
+        dna = AgentDNA()
+        for gene in AgentDNA.GENE_FIELDS:
+            if gene in data:
+                setattr(dna, gene, data[gene])
+        if 'id' in data:
+            dna.id = data['id']
+        return dna
+
+    # Try to find latest champion in output/
+    output_dir = getattr(args, 'output', 'output')
+    champion_file = os.path.join(output_dir, 'champion.json')
+    if os.path.exists(champion_file):
+        with open(champion_file) as f:
+            data = json.load(f)
+        dna = AgentDNA()
+        for gene in AgentDNA.GENE_FIELDS:
+            if gene in data:
+                setattr(dna, gene, data[gene])
+        if 'id' in data:
+            dna.id = data['id']
+        return dna
+
+    # Default DNA
+    return AgentDNA()
+
+
+def cmd_export(args):
+    """Export evolved strategy as portable JSON."""
+    from .core.dna import AgentDNA
+
+    json_mode = getattr(args, 'json', False)
+    dna = _load_champion_dna(args)
+
+    export_data = {
+        'format': 'darwinia-strategy-v1',
+        'exported_at': datetime.now(timezone.utc).isoformat(),
+        'dna': {
+            'id': dna.id,
+            'generation': dna.generation,
+            'fitness': dna.fitness,
+            'genes': dna.get_genes(),
+        },
+        'metadata': {
+            'gene_count': len(AgentDNA.GENE_FIELDS),
+            'gene_fields': AgentDNA.GENE_FIELDS,
+        },
+    }
+
+    # Save to file
+    output_dir = args.output
+    os.makedirs(output_dir, exist_ok=True)
+    filename = f"strategy_{dna.id}.json"
+    filepath = os.path.join(output_dir, filename)
+
+    with open(filepath, 'w') as f:
+        json.dump(export_data, f, indent=2)
+
+    if json_mode:
+        print(json.dumps({
+            'exported': filepath,
+            'strategy_id': dna.id,
+            'format': 'darwinia-strategy-v1',
+            'genes': dna.get_genes(),
+        }, indent=2))
+    else:
+        print(f"\n🧬 Darwinia Strategy Export")
+        print(f"   Strategy ID: {dna.id}")
+        print(f"   Generation:  {dna.generation}")
+        print(f"   Fitness:     {dna.fitness:.4f}")
+        print(f"   Genes:       {len(AgentDNA.GENE_FIELDS)}")
+        print(f"   Saved to:    {filepath}")
+        print(f"\n   Import with: python -m darwinia backtest -c {filepath}")
+
+
 def cmd_info(args):
     """Show project info."""
     import glob as glob_mod
@@ -791,9 +958,10 @@ def cmd_info(args):
         "description": "The Self-Evolving Agent Ecosystem",
         "genes": 17,
         "attack_types": 6,
-        "commands": 13,
+        "commands": 15,
         "modules": ["core", "evolution", "arena", "discovery", "chronicle",
-                     "personality", "knowledge", "data", "macro", "integrations", "analytics", "validation", "repair"],
+                     "personality", "knowledge", "data", "macro", "integrations",
+                     "analytics", "validation", "repair", "backtest"],
         "tests": test_count,
         "data_candles": candle_count,
         "data_files": [os.path.basename(f) for f in data_files],
@@ -816,7 +984,9 @@ def cmd_info(args):
         print("    validate    Walk-forward overfit check     explain     Gene ablation analysis")
         print("    fetch       Download live market data      scan        Discover trending assets")
         print("    analytics   Population statistics          tournament  Champion round-robin")
-        print("    dashboard   Streamlit web UI               info        System info")
+        print("    backtest    Full performance analysis      export      Export strategy as JSON")
+        print("    repair      Self-repair degraded agents    dashboard   Streamlit web UI")
+        print("    info        System info")
         print()
         print("  GitHub: https://github.com/0xSanei/darwinia")
 
@@ -908,6 +1078,25 @@ def main():
                           help="Repair method (default: targeted)")
     p_repair.add_argument("--json", action="store_true", help="Output results as JSON")
     p_repair.set_defaults(func=cmd_repair)
+
+    # backtest
+    p_bt = subparsers.add_parser("backtest", help="Backtest a strategy with full performance metrics")
+    p_bt.add_argument("-c", "--champion", help="Path to champion JSON file")
+    p_bt.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
+    p_bt.add_argument("--walk-forward", action="store_true", help="Use walk-forward windows instead of single pass")
+    p_bt.add_argument("-w", "--windows", type=int, default=5, help="Number of walk-forward windows (default: 5)")
+    p_bt.add_argument("--multi", action="store_true", help="Test across all available assets")
+    p_bt.add_argument("--train-ratio", type=float, default=0.0, help="Train/test split ratio (default: 0 = full data)")
+    p_bt.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_bt.set_defaults(func=cmd_backtest)
+
+    # export
+    p_export = subparsers.add_parser("export", help="Export evolved strategy as portable JSON")
+    p_export.add_argument("-c", "--champion", help="Path to champion JSON file")
+    p_export.add_argument("-o", "--output", default="output", help="Output directory")
+    p_export.add_argument("--format", default="json", choices=["json", "yaml"], help="Export format (default: json)")
+    p_export.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_export.set_defaults(func=cmd_export)
 
     # dashboard
     p_dash = subparsers.add_parser("dashboard", help="Launch Streamlit dashboard")
