@@ -846,31 +846,40 @@ def _load_champion_dna(args):
     """Load champion DNA from file or create default."""
     from .core.dna import AgentDNA
 
-    champion_path = getattr(args, 'champion', None)
-    if champion_path and os.path.exists(champion_path):
-        with open(champion_path) as f:
-            data = json.load(f)
+    def _parse_dna(data):
         dna = AgentDNA()
+        genes = data.get('genes', data)  # support both flat and nested format
         for gene in AgentDNA.GENE_FIELDS:
-            if gene in data:
-                setattr(dna, gene, data[gene])
+            if gene in genes:
+                val = genes[gene]
+                if isinstance(val, (int, float)):
+                    setattr(dna, gene, float(val))
         if 'id' in data:
             dna.id = data['id']
+        if 'dna' in data and 'id' in data['dna']:
+            dna.id = data['dna']['id']
         return dna
+
+    champion_path = getattr(args, 'champion', None)
+    if champion_path and os.path.exists(champion_path):
+        try:
+            with open(champion_path) as f:
+                data = json.load(f)
+            return _parse_dna(data)
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            print(f"   Warning: failed to load {champion_path}: {e}")
+            print(f"   Falling back to default DNA")
 
     # Try to find latest champion in output/
     output_dir = getattr(args, 'output', 'output')
     champion_file = os.path.join(output_dir, 'champion.json')
     if os.path.exists(champion_file):
-        with open(champion_file) as f:
-            data = json.load(f)
-        dna = AgentDNA()
-        for gene in AgentDNA.GENE_FIELDS:
-            if gene in data:
-                setattr(dna, gene, data[gene])
-        if 'id' in data:
-            dna.id = data['id']
-        return dna
+        try:
+            with open(champion_file) as f:
+                data = json.load(f)
+            return _parse_dna(data)
+        except (json.JSONDecodeError, KeyError, TypeError):
+            pass
 
     # Default DNA
     return AgentDNA()
@@ -937,11 +946,11 @@ def cmd_ensemble(args):
     market = MarketEnvironment(data_dir)
     candles = market.load_csv(data_file)
 
-    # Create ensemble from random or evolved DNAs
+    # Create ensemble from diverse mutated DNAs
     members = []
     for i in range(args.size):
         dna = AgentDNA()
-        dna.mutate(mutation_rate=0.5, mutation_strength=0.3)
+        dna = dna.mutate(mutation_rate=0.5, mutation_strength=0.3)
         members.append(dna)
 
     ensemble = EnsembleAgent(members, voting_mode=args.mode)
@@ -1219,7 +1228,7 @@ def main():
     p_export = subparsers.add_parser("export", help="Export evolved strategy as portable JSON")
     p_export.add_argument("-c", "--champion", help="Path to champion JSON file")
     p_export.add_argument("-o", "--output", default="output", help="Output directory")
-    p_export.add_argument("--format", default="json", choices=["json", "yaml"], help="Export format (default: json)")
+    p_export.add_argument("--format", default="json", choices=["json"], help="Export format (default: json)")
     p_export.add_argument("--json", action="store_true", help="Output results as JSON")
     p_export.set_defaults(func=cmd_export)
 

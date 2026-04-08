@@ -144,10 +144,13 @@ class StrategyFingerprint:
         return dot / (mag_a * mag_b)
 
     def dominant_traits(self) -> List[str]:
-        """Genes significantly above or below 0.5 (threshold: abs(gene - 0.5) > 0.2)."""
+        """Genes significantly different from their default values (threshold > 0.2)."""
+        defaults = AgentDNA()
+        default_genes = defaults.get_genes()
         traits = []
         for gene, val in self._genes.items():
-            deviation = val - 0.5
+            baseline = default_genes[gene]
+            deviation = val - baseline
             if abs(deviation) > 0.2:
                 direction = "high" if deviation > 0 else "low"
                 traits.append(f"{SHORT_NAMES[gene]}:{direction}({val:.2f})")
@@ -228,7 +231,7 @@ class StrategyFingerprint:
         ])
 
         best = max(scores, key=scores.get)
-        if scores[best] > 0.06:
+        if scores[best] > 0.10:
             return best
         return "Hybrid"
 

@@ -134,15 +134,15 @@ class MonteCarloSimulator:
         Block bootstrap: resample candles with replacement in blocks.
         Block size = 20 candles. Preserves local temporal structure.
         """
-        block_size = 20
         n = len(candles)
+        # Adaptive block size: at least 1, at most 20, scale with data length
+        block_size = max(1, min(20, n // 5))
         n_blocks = max(n // block_size, 1)
 
         # Number of valid block start indices
         max_start = n - block_size
         if max_start < 0:
-            # Data shorter than one block, just return a copy
-            return candles.copy()
+            max_start = 0
 
         # Sample block start indices with replacement
         starts = self._rng.integers(0, max_start + 1, size=n_blocks)
@@ -167,8 +167,9 @@ class MonteCarloSimulator:
         noise = self._rng.normal(0, 1, size=ohlc.shape) * noise_std
         ohlc_noisy = ohlc + noise
 
-        # Ensure prices stay positive
-        ohlc_noisy = np.maximum(ohlc_noisy, 1e-8)
+        # Ensure prices stay positive — use relative floor (10% of min price)
+        price_floor = max(ohlc.min() * 0.1, 1e-8)
+        ohlc_noisy = np.maximum(ohlc_noisy, price_floor)
 
         # Maintain OHLC consistency: high >= open,close; low <= open,close
         opens = ohlc_noisy[:, 0]
@@ -215,8 +216,12 @@ class MonteCarloSimulator:
         result[:, 4] = new_closes  # Close
         # Volume stays the same, timestamps stay the same
 
-        # Ensure positivity
-        result[:, 1:5] = np.maximum(result[:, 1:5], 1e-8)
+        # Ensure positivity and OHLC consistency
+        price_floor = max(candles[:, 4].min() * 0.1, 1e-8)
+        result[:, 1:5] = np.maximum(result[:, 1:5], price_floor)
+        # high >= max(open, close), low <= min(open, close)
+        result[:, 2] = np.maximum(result[:, 2], np.maximum(result[:, 1], result[:, 4]))
+        result[:, 3] = np.minimum(result[:, 3], np.minimum(result[:, 1], result[:, 4]))
         return result
 
     def _build_result(

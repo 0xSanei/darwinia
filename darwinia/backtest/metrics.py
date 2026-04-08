@@ -46,24 +46,35 @@ class PerformanceMetrics:
 
     def to_dict(self) -> Dict:
         """Serialize to dict (exclude curves for compact output)."""
+        def _safe(v, decimals=4):
+            """Round and clamp to JSON-safe range."""
+            if isinstance(v, (int, np.integer)):
+                return int(v)
+            v = float(v)
+            if math.isnan(v):
+                return 0.0
+            if math.isinf(v):
+                return 9999.99 if v > 0 else -9999.99
+            return round(v, decimals)
+
         return {
-            'total_return': round(self.total_return, 2),
-            'total_return_pct': round(self.total_return_pct, 4),
-            'annualized_return': round(self.annualized_return, 4),
-            'sharpe_ratio': round(self.sharpe_ratio, 4),
-            'sortino_ratio': round(self.sortino_ratio, 4),
-            'calmar_ratio': round(self.calmar_ratio, 4),
-            'max_drawdown': round(self.max_drawdown, 2),
-            'max_drawdown_pct': round(self.max_drawdown_pct, 4),
-            'max_drawdown_duration': self.max_drawdown_duration,
+            'total_return': _safe(self.total_return, 2),
+            'total_return_pct': _safe(self.total_return_pct),
+            'annualized_return': _safe(self.annualized_return),
+            'sharpe_ratio': _safe(self.sharpe_ratio),
+            'sortino_ratio': _safe(self.sortino_ratio),
+            'calmar_ratio': _safe(self.calmar_ratio),
+            'max_drawdown': _safe(self.max_drawdown, 2),
+            'max_drawdown_pct': _safe(self.max_drawdown_pct),
+            'max_drawdown_duration': int(self.max_drawdown_duration),
             'num_trades': self.num_trades,
-            'win_rate': round(self.win_rate, 4),
-            'profit_factor': round(self.profit_factor, 4),
-            'avg_win': round(self.avg_win, 2),
-            'avg_loss': round(self.avg_loss, 2),
-            'best_trade': round(self.best_trade, 2),
-            'worst_trade': round(self.worst_trade, 2),
-            'avg_trade_duration': round(self.avg_trade_duration, 1),
+            'win_rate': _safe(self.win_rate),
+            'profit_factor': _safe(self.profit_factor),
+            'avg_win': _safe(self.avg_win, 2),
+            'avg_loss': _safe(self.avg_loss, 2),
+            'best_trade': _safe(self.best_trade, 2),
+            'worst_trade': _safe(self.worst_trade, 2),
+            'avg_trade_duration': _safe(self.avg_trade_duration, 1),
         }
 
     def summary(self) -> str:
@@ -151,7 +162,7 @@ def compute_metrics(
     # Profit factor
     gross_profit = float(wins.sum()) if len(wins) > 0 else 0
     gross_loss = abs(float(losses.sum())) if len(losses) > 0 else 0
-    m.profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf') if gross_profit > 0 else 0
+    m.profit_factor = gross_profit / gross_loss if gross_loss > 0 else 9999.99 if gross_profit > 0 else 0
 
     # Drawdown analysis
     equity_arr = np.array(equity)
@@ -179,7 +190,9 @@ def compute_metrics(
         excess_returns = pnl_pcts - (risk_free_rate / candles_per_year)
         std = np.std(pnl_pcts, ddof=1)
         if std > 0:
-            m.sharpe_ratio = float(np.mean(excess_returns) / std * math.sqrt(min(m.num_trades, candles_per_year)))
+            # Annualize: multiply by sqrt(trades_per_year), capped at candles_per_year
+            ann_factor = math.sqrt(candles_per_year)
+            m.sharpe_ratio = float(np.mean(excess_returns) / std * ann_factor)
 
     # Sortino ratio (penalizes only downside volatility)
     if len(pnl_pcts) > 1:
@@ -188,7 +201,7 @@ def compute_metrics(
             downside_std = np.std(downside, ddof=1)
             if downside_std > 0:
                 excess_mean = np.mean(pnl_pcts) - (risk_free_rate / candles_per_year)
-                m.sortino_ratio = float(excess_mean / downside_std * math.sqrt(min(m.num_trades, candles_per_year)))
+                m.sortino_ratio = float(excess_mean / downside_std * math.sqrt(candles_per_year))
 
     # Calmar ratio (annualized return / max drawdown)
     if m.max_drawdown_pct > 0:

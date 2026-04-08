@@ -141,18 +141,20 @@ class EnsembleAgent:
             return self._majority_vote(votes)
 
     def _majority_vote(self, votes: List[Dict]) -> str:
-        """Simple majority: action with most votes wins. Ties go to hold."""
+        """Simple majority: action with most votes wins. Ties broken by signal strength."""
         counts: Dict[str, int] = {"buy": 0, "sell": 0, "hold": 0}
+        signal_sums: Dict[str, float] = {"buy": 0.0, "sell": 0.0, "hold": 0.0}
         for v in votes:
             counts[v["action"]] += 1
+            signal_sums[v["action"]] += abs(v.get("signal_strength", 0))
 
         max_count = max(counts.values())
         winners = [a for a, c in counts.items() if c == max_count]
 
         if len(winners) == 1:
             return winners[0]
-        # Tie: hold is safest default
-        return "hold"
+        # Tie: pick the action with stronger aggregate signal conviction
+        return max(winners, key=lambda a: signal_sums[a]) if any(signal_sums[w] > 0 for w in winners) else "hold"
 
     def _weighted_vote(self, votes: List[Dict]) -> str:
         """Fitness-weighted voting: each member's vote is scaled by its fitness."""
@@ -180,9 +182,19 @@ class EnsembleAgent:
         """
         Measure how strongly the committee agrees on the final action.
         Returns float in [0, 1]. 1.0 = perfect agreement.
+        For weighted mode, uses fitness-weighted agreement.
         """
         if not votes:
             return 0.0
+
+        if self.voting_mode == "weighted":
+            total_weight = sum(max(v["fitness"], 0.0) for v in votes)
+            if total_weight == 0:
+                # Fall back to unweighted
+                agreeing = sum(1 for v in votes if v["action"] == final_action)
+                return agreeing / len(votes)
+            agreeing_weight = sum(max(v["fitness"], 0.0) for v in votes if v["action"] == final_action)
+            return agreeing_weight / total_weight
 
         agreeing = sum(1 for v in votes if v["action"] == final_action)
         return agreeing / len(votes)
