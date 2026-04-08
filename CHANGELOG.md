@@ -4,6 +4,20 @@ All notable changes to Darwinia are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [1.3.0] - 2026-04-08
+
+### Added
+- Ensemble committee system — multi-agent voting with majority, weighted, and unanimous modes
+- Monte Carlo stress testing — bootstrap, noise injection, and return shuffling (configurable N simulations)
+- Benchmark baselines — compare evolved strategies against Buy-and-Hold, Random, Mean Reversion, Momentum, and DCA
+- Strategy fingerprint — ASCII radar chart visualization, archetype classification, dominant trait detection, cosine similarity comparison
+- `ensemble`, `montecarlo`, `benchmark`, `fingerprint` CLI commands
+
+### Changed
+- CLI now has 19 commands (up from 15)
+- 18 modules total (added ensemble, montecarlo, benchmark, fingerprint)
+- 176 tests (up from 140)
+
 ## [1.2.0] - 2026-04-08
 
 ### Added

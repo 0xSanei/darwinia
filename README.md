@@ -12,7 +12,7 @@
   <a href="https://claude.ai"><img src="https://img.shields.io/badge/Claude_Code-compatible-blueviolet?style=flat-square" alt="Claude Code"></a>
   <img src="https://img.shields.io/badge/genes-17-gold?style=flat-square" alt="17 Genes">
   <img src="https://img.shields.io/badge/attacks-6_types-red?style=flat-square" alt="6 Attack Types">
-  <img src="https://img.shields.io/badge/tests-140_passing-brightgreen?style=flat-square" alt="140 Tests">
+  <img src="https://img.shields.io/badge/tests-176_passing-brightgreen?style=flat-square" alt="176 Tests">
   <a href="https://colab.research.google.com/github/0xSanei/darwinia/blob/main/notebooks/quickstart.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Colab"></a>
 </p>
 
@@ -275,7 +275,7 @@ darwinia/
 ├── integrations/  # Skill composability layer (SkillBridge, SkillRegistry)
 ├── analytics/     # Population statistics, clustering, diversity metrics
 ├── repair/        # Self-repair: health monitoring + auto-fix degraded strategies
-└── __main__.py    # CLI entry point (15 commands)
+└── __main__.py    # CLI entry point (19 commands)
 
 dashboard/         # Streamlit visualization (4 pages)
 scripts/           # Competitor monitoring, utilities
@@ -341,6 +341,59 @@ python -m darwinia export -c champion.json
 
 Metrics: Sharpe ratio, Sortino ratio, Calmar ratio, max drawdown ($ and %), drawdown duration, win rate, profit factor, average win/loss, annualized return. Walk-forward mode tests stability across rolling windows. Multi-asset mode tests whether a strategy generalizes beyond its training data.
 
+### Ensemble Committee
+
+Combine multiple evolved strategies into a committee that votes on each trade decision:
+
+```bash
+# 5-member committee with majority voting
+python -m darwinia ensemble -d data/btc_1h.csv -s 5 --mode majority
+
+# Fitness-weighted voting (better strategies count more)
+python -m darwinia ensemble --mode weighted
+
+# Unanimous mode (all must agree, else hold)
+python -m darwinia ensemble --mode unanimous
+```
+
+### Monte Carlo Stress Testing
+
+Run hundreds of randomized market simulations to test strategy robustness:
+
+```bash
+# 500 bootstrap simulations
+python -m darwinia montecarlo -c champion.json -n 500
+
+# Add noise to prices
+python -m darwinia montecarlo -c champion.json --method noise
+
+# Shuffle returns to destroy structure
+python -m darwinia montecarlo -c champion.json --method shuffle
+```
+
+Reports 95%/99% confidence intervals, probability of profit, and return distribution.
+
+### Benchmark Baselines
+
+Compare your evolved strategy against 5 standard baselines:
+
+```bash
+python -m darwinia benchmark -c champion.json -d data/btc_1h.csv
+```
+
+Baselines: Buy-and-Hold, Random Trader, Mean Reversion, Momentum, DCA. Ranked by Sharpe ratio so you can see exactly where evolution adds value.
+
+### Strategy Fingerprint
+
+Visualize a strategy's genetic identity:
+
+```bash
+python -m darwinia fingerprint -c champion.json
+python -m darwinia fingerprint -c champion.json --json
+```
+
+Shows DNA as an ASCII radar chart, classifies into archetypes (Aggressive Momentum, Conservative Mean-Reversion, Scalper, Trend Follower, Contrarian, Balanced Adaptive), and highlights dominant traits.
+
 ### Skill Composability
 
 Darwinia exposes a `SkillBridge` API for other ClawHub skills to call it programmatically, and a `SkillRegistry` for Darwinia to call external skills (macro-liquidity, crypto-market-rank, okx-dex-market). This makes Darwinia a composable building block in multi-skill agent workflows.
@@ -365,7 +418,7 @@ The evolution engine is **domain-agnostic**. The DNA → Fitness → Selection �
 
 ```bash
 make setup       # Install dependencies
-make test        # Run 140 tests
+make test        # Run 176 tests
 make evolve      # Run 50 generations
 make arena       # Adversarial arena
 make dashboard   # Streamlit dashboard

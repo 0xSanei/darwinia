@@ -924,6 +924,128 @@ def cmd_export(args):
         print(f"\n   Import with: python -m darwinia backtest -c {filepath}")
 
 
+def cmd_ensemble(args):
+    """Run ensemble committee evaluation."""
+    from .ensemble.committee import EnsembleAgent
+    from .core.dna import AgentDNA
+    from .core.market import MarketEnvironment
+
+    json_mode = getattr(args, 'json', False)
+    data_file = os.path.basename(args.data)
+    data_dir = os.path.dirname(args.data) or 'data'
+
+    market = MarketEnvironment(data_dir)
+    candles = market.load_csv(data_file)
+
+    # Create ensemble from random or evolved DNAs
+    members = []
+    for i in range(args.size):
+        dna = AgentDNA()
+        dna.mutate(mutation_rate=0.5, mutation_strength=0.3)
+        members.append(dna)
+
+    ensemble = EnsembleAgent(members, voting_mode=args.mode)
+
+    if not json_mode:
+        print(f"\n🧬 Darwinia Ensemble — {args.size} members, {args.mode} voting")
+        print(f"   Data: {data_file} | {len(candles)} candles\n")
+
+    result = ensemble.evaluate(candles)
+
+    if json_mode:
+        print(json.dumps({
+            'members': len(result['per_member']),
+            'voting_mode': args.mode,
+            'per_member': result['per_member'],
+            'consensus': result['consensus'],
+        }, indent=2, default=str))
+    else:
+        print(f"   Members: {len(result['per_member'])}")
+        consensus = result['consensus']
+        avg_cons = consensus.get('avg_consensus_strength', consensus.get('mean_consensus', 0))
+        print(f"   Consensus strength: {avg_cons:.4f}")
+        print()
+        for ms in result['per_member']:
+            agent_id = ms.get('agent_id', ms.get('dna_id', '?'))
+            print(f"   Agent {agent_id}: {ms['num_trades']} trades, PnL=${ms['total_pnl']:.2f}")
+
+
+def cmd_montecarlo(args):
+    """Run Monte Carlo stress test."""
+    from .montecarlo.simulator import MonteCarloSimulator
+
+    json_mode = getattr(args, 'json', False)
+    data_file = os.path.basename(args.data)
+    data_dir = os.path.dirname(args.data) or 'data'
+
+    dna = _load_champion_dna(args)
+    sim = MonteCarloSimulator(data_dir=data_dir, n_simulations=args.simulations)
+
+    if not json_mode:
+        print(f"\n🧬 Darwinia Monte Carlo — {args.simulations} simulations ({args.method})")
+        print(f"   Data: {data_file} | Strategy: {dna.id}\n")
+
+    result = sim.run(dna, data_file, method=args.method)
+
+    if json_mode:
+        print(json.dumps(result.to_dict(), indent=2))
+    else:
+        print(result.summary())
+
+
+def cmd_benchmark(args):
+    """Compare strategy against baselines."""
+    from .benchmark.baselines import BenchmarkSuite
+
+    json_mode = getattr(args, 'json', False)
+    data_file = os.path.basename(args.data)
+    data_dir = os.path.dirname(args.data) or 'data'
+
+    dna = _load_champion_dna(args)
+    suite = BenchmarkSuite(data_dir=data_dir)
+
+    if not json_mode:
+        print(f"\n🧬 Darwinia Benchmark — Strategy vs Baselines")
+        print(f"   Data: {data_file} | Strategy: {dna.id}\n")
+
+    result = suite.run(dna, data_file)
+
+    if json_mode:
+        output = {
+            'evolved': result['evolved'].to_dict(),
+            'baselines': [b.to_dict() for b in result['baselines']],
+            'ranking': [r.to_dict() for r in result['ranking']],
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print(f"   {'Strategy':<25} {'Return':>10} {'Sharpe':>10} {'MaxDD':>10} {'WinRate':>10}")
+        print(f"   {'─' * 65}")
+        for r in result['ranking']:
+            marker = " ◀" if r.strategy_name == "evolved" else ""
+            print(f"   {r.strategy_name:<25} {r.total_return_pct:>+9.2%} {r.sharpe_ratio:>10.4f} {r.max_drawdown_pct:>9.2%} {r.win_rate:>10.2%}{marker}")
+
+
+def cmd_fingerprint(args):
+    """Show strategy DNA fingerprint."""
+    from .fingerprint.visualizer import StrategyFingerprint
+
+    json_mode = getattr(args, 'json', False)
+    dna = _load_champion_dna(args)
+    fp = StrategyFingerprint(dna)
+
+    if json_mode:
+        print(json.dumps(fp.to_dict(), indent=2))
+    else:
+        print(f"\n🧬 Darwinia Strategy Fingerprint")
+        print(f"   ID: {dna.id} | Archetype: {fp.archetype()}\n")
+        print(fp.radar_ascii())
+        traits = fp.dominant_traits()
+        if traits:
+            print(f"\n   Dominant traits:")
+            for t in traits:
+                print(f"     • {t}")
+
+
 def cmd_info(args):
     """Show project info."""
     import glob as glob_mod
@@ -958,10 +1080,11 @@ def cmd_info(args):
         "description": "The Self-Evolving Agent Ecosystem",
         "genes": 17,
         "attack_types": 6,
-        "commands": 15,
+        "commands": 19,
         "modules": ["core", "evolution", "arena", "discovery", "chronicle",
                      "personality", "knowledge", "data", "macro", "integrations",
-                     "analytics", "validation", "repair", "backtest"],
+                     "analytics", "validation", "repair", "backtest",
+                     "ensemble", "montecarlo", "benchmark", "fingerprint"],
         "tests": test_count,
         "data_candles": candle_count,
         "data_files": [os.path.basename(f) for f in data_files],
@@ -985,6 +1108,8 @@ def cmd_info(args):
         print("    fetch       Download live market data      scan        Discover trending assets")
         print("    analytics   Population statistics          tournament  Champion round-robin")
         print("    backtest    Full performance analysis      export      Export strategy as JSON")
+        print("    ensemble    Multi-agent committee vote     montecarlo  Monte Carlo stress test")
+        print("    benchmark   Compare against baselines      fingerprint Strategy DNA fingerprint")
         print("    repair      Self-repair degraded agents    dashboard   Streamlit web UI")
         print("    info        System info")
         print()
@@ -1097,6 +1222,38 @@ def main():
     p_export.add_argument("--format", default="json", choices=["json", "yaml"], help="Export format (default: json)")
     p_export.add_argument("--json", action="store_true", help="Output results as JSON")
     p_export.set_defaults(func=cmd_export)
+
+    # ensemble
+    p_ens = subparsers.add_parser("ensemble", help="Run ensemble committee of multiple strategies")
+    p_ens.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
+    p_ens.add_argument("-s", "--size", type=int, default=5, help="Number of committee members (default: 5)")
+    p_ens.add_argument("--mode", default="majority", choices=["majority", "weighted", "unanimous"],
+                       help="Voting mode (default: majority)")
+    p_ens.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_ens.set_defaults(func=cmd_ensemble)
+
+    # montecarlo
+    p_mc = subparsers.add_parser("montecarlo", help="Monte Carlo stress test")
+    p_mc.add_argument("-c", "--champion", help="Path to champion JSON file")
+    p_mc.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
+    p_mc.add_argument("-n", "--simulations", type=int, default=500, help="Number of simulations (default: 500)")
+    p_mc.add_argument("--method", default="bootstrap", choices=["bootstrap", "noise", "shuffle"],
+                      help="Randomization method (default: bootstrap)")
+    p_mc.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_mc.set_defaults(func=cmd_montecarlo)
+
+    # benchmark
+    p_bench = subparsers.add_parser("benchmark", help="Compare strategy against baselines")
+    p_bench.add_argument("-c", "--champion", help="Path to champion JSON file")
+    p_bench.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
+    p_bench.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_bench.set_defaults(func=cmd_benchmark)
+
+    # fingerprint
+    p_fp = subparsers.add_parser("fingerprint", help="Show strategy DNA fingerprint")
+    p_fp.add_argument("-c", "--champion", help="Path to champion JSON file")
+    p_fp.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_fp.set_defaults(func=cmd_fingerprint)
 
     # dashboard
     p_dash = subparsers.add_parser("dashboard", help="Launch Streamlit dashboard")
