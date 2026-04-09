@@ -1055,6 +1055,54 @@ def cmd_fingerprint(args):
                 print(f"     • {t}")
 
 
+def cmd_portfolio(args):
+    """Allocate capital across multiple evolved strategies."""
+    from .portfolio.allocator import PortfolioAllocator
+    from .core.dna import AgentDNA
+
+    json_mode = getattr(args, 'json', False)
+    data_file = os.path.basename(args.data)
+    data_dir = os.path.dirname(args.data) or 'data'
+
+    # Build member list: from --champions paths or by mutating a base DNA
+    members = []
+    if args.champions:
+        for path in args.champions:
+            if not os.path.exists(path):
+                print(f"   Warning: skipping missing file {path}")
+                continue
+            try:
+                with open(path) as f:
+                    data = json.load(f)
+                dna = AgentDNA()
+                genes = data.get('genes', data)
+                for gene in AgentDNA.GENE_FIELDS:
+                    if gene in genes and isinstance(genes[gene], (int, float)):
+                        setattr(dna, gene, float(genes[gene]))
+                if 'id' in data:
+                    dna.id = data['id']
+                members.append(dna)
+            except (json.JSONDecodeError, KeyError, TypeError) as e:
+                print(f"   Warning: failed to load {path}: {e}")
+
+    if not members:
+        # Synthesize a diverse member list by mutating a default DNA
+        for _ in range(args.size):
+            members.append(AgentDNA().mutate(mutation_rate=0.5, mutation_strength=0.3))
+
+    if not json_mode:
+        print(f"\n🧬 Darwinia Portfolio Allocator — {args.method}")
+        print(f"   Members: {len(members)} | Data: {data_file}\n")
+
+    allocator = PortfolioAllocator(data_dir=data_dir, initial_capital=args.capital)
+    result = allocator.allocate(members, data_file, method=args.method)
+
+    if json_mode:
+        print(json.dumps(result.to_dict(), indent=2))
+    else:
+        print(result.summary())
+
+
 def cmd_info(args):
     """Show project info."""
     import glob as glob_mod
@@ -1089,11 +1137,11 @@ def cmd_info(args):
         "description": "The Self-Evolving Agent Ecosystem",
         "genes": 17,
         "attack_types": 6,
-        "commands": 19,
+        "commands": 20,
         "modules": ["core", "evolution", "arena", "discovery", "chronicle",
                      "personality", "knowledge", "data", "macro", "integrations",
                      "analytics", "validation", "repair", "backtest",
-                     "ensemble", "montecarlo", "benchmark", "fingerprint"],
+                     "ensemble", "montecarlo", "benchmark", "fingerprint", "portfolio"],
         "tests": test_count,
         "data_candles": candle_count,
         "data_files": [os.path.basename(f) for f in data_files],
@@ -1119,8 +1167,8 @@ def cmd_info(args):
         print("    backtest    Full performance analysis      export      Export strategy as JSON")
         print("    ensemble    Multi-agent committee vote     montecarlo  Monte Carlo stress test")
         print("    benchmark   Compare against baselines      fingerprint Strategy DNA fingerprint")
-        print("    repair      Self-repair degraded agents    dashboard   Streamlit web UI")
-        print("    info        System info")
+        print("    portfolio   Multi-strategy capital alloc   repair      Self-repair degraded agents")
+        print("    dashboard   Streamlit web UI               info        System info")
         print()
         print("  GitHub: https://github.com/0xSanei/darwinia")
 
@@ -1263,6 +1311,18 @@ def main():
     p_fp.add_argument("-c", "--champion", help="Path to champion JSON file")
     p_fp.add_argument("--json", action="store_true", help="Output results as JSON")
     p_fp.set_defaults(func=cmd_fingerprint)
+
+    # portfolio
+    p_port = subparsers.add_parser("portfolio", help="Allocate capital across multiple strategies")
+    p_port.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
+    p_port.add_argument("--champions", nargs="*", help="Paths to champion JSON files (one per strategy)")
+    p_port.add_argument("-s", "--size", type=int, default=5, help="Synthetic member count if no champions given (default: 5)")
+    p_port.add_argument("--method", default="risk_parity",
+                        choices=["equal_weight", "sharpe_weighted", "risk_parity", "inverse_variance", "kelly"],
+                        help="Allocation method (default: risk_parity)")
+    p_port.add_argument("--capital", type=float, default=10000.0, help="Initial capital per strategy (default: 10000)")
+    p_port.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_port.set_defaults(func=cmd_portfolio)
 
     # dashboard
     p_dash = subparsers.add_parser("dashboard", help="Launch Streamlit dashboard")

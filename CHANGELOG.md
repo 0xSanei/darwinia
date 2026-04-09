@@ -4,6 +4,20 @@ All notable changes to Darwinia are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [1.4.0] - 2026-04-09
+
+### Added
+- Portfolio Allocator — distribute capital across multiple evolved strategies
+- Five allocation methods: equal weight, Sharpe-weighted, risk parity, inverse variance, fractional Kelly
+- Portfolio statistics: expected return, portfolio volatility, portfolio Sharpe, diversification ratio
+- `portfolio` CLI command with `--champions` (load multiple strategy files) and `--method` flags
+- 14 new tests for the portfolio module
+
+### Changed
+- CLI now has 20 commands (up from 19)
+- 19 modules total (added portfolio)
+- 190 tests (up from 176)
+
 ## [1.3.0] - 2026-04-08
 
 ### Added
