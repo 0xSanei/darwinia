@@ -12,7 +12,7 @@
   <a href="https://claude.ai"><img src="https://img.shields.io/badge/Claude_Code-compatible-blueviolet?style=flat-square" alt="Claude Code"></a>
   <img src="https://img.shields.io/badge/genes-17-gold?style=flat-square" alt="17 Genes">
   <img src="https://img.shields.io/badge/attacks-6_types-red?style=flat-square" alt="6 Attack Types">
-  <img src="https://img.shields.io/badge/tests-190_passing-brightgreen?style=flat-square" alt="190 Tests">
+  <img src="https://img.shields.io/badge/tests-215_passing-brightgreen?style=flat-square" alt="215 Tests">
   <a href="https://colab.research.google.com/github/0xSanei/darwinia/blob/main/notebooks/quickstart.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Colab"></a>
 </p>
 
@@ -275,7 +275,7 @@ darwinia/
 ├── integrations/  # Skill composability layer (SkillBridge, SkillRegistry)
 ├── analytics/     # Population statistics, clustering, diversity metrics
 ├── repair/        # Self-repair: health monitoring + auto-fix degraded strategies
-└── __main__.py    # CLI entry point (20 commands)
+└── __main__.py    # CLI entry point (22 commands)
 
 dashboard/         # Streamlit visualization (4 pages)
 scripts/           # Competitor monitoring, utilities
@@ -404,6 +404,28 @@ python -m darwinia portfolio -s 5 --method kelly --json
 ```
 
 Five allocation methods: `equal_weight`, `sharpe_weighted`, `risk_parity`, `inverse_variance`, and fractional `kelly`. Reports portfolio Sharpe, volatility, and the diversification ratio so you can see when stacking strategies actually adds value vs. concentrating capital in the best one.
+
+### Market Regime Detection
+
+Classify market data into regimes for adaptive strategy behavior:
+
+```bash
+python -m darwinia regime -d data/btc_1h.csv -w 20
+python -m darwinia regime -d data/btc_1h.csv --json
+```
+
+Five regimes: `trending_up`, `trending_down`, `mean_reverting`, `high_volatility`, `low_volatility`. Uses rolling z-scored trend strength, volatility, and autocorrelation. Reports regime distribution, segment analysis, transition matrix, and stability score.
+
+### Cross-Strategy Correlation
+
+Identify redundant vs diversified strategies:
+
+```bash
+python -m darwinia correlation --champions a.json b.json c.json
+python -m darwinia correlation -s 6 --json
+```
+
+Runs multiple strategies on the same data, bins trade returns into time buckets, and computes pairwise Pearson correlation. ASCII heatmap, auto-clustering, and pair extremes (most/least correlated). Critical input for portfolio construction — high correlation means you're doubling down, not diversifying.
 
 ### Skill Composability
 

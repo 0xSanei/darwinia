@@ -1055,6 +1055,77 @@ def cmd_fingerprint(args):
                 print(f"     • {t}")
 
 
+def cmd_regime(args):
+    """Detect market regimes from price data."""
+    from .regime.detector import RegimeDetector
+    from .core.market import MarketEnvironment
+
+    json_mode = getattr(args, 'json', False)
+    data_file = os.path.basename(args.data)
+    data_dir = os.path.dirname(args.data) or 'data'
+
+    market = MarketEnvironment(data_dir=data_dir)
+    candles = market.load_csv(data_file)
+
+    detector = RegimeDetector(window=args.window, trend_threshold=args.trend_t, vol_threshold=args.vol_t)
+
+    if not json_mode:
+        print(f"\n🧬 Darwinia Regime Detector — window={args.window}")
+        print(f"   Data: {data_file} | {len(candles)} candles\n")
+
+    result = detector.detect(candles)
+
+    if json_mode:
+        print(json.dumps(result.to_dict(), indent=2))
+    else:
+        print(result.summary())
+
+
+def cmd_correlation(args):
+    """Analyze cross-strategy correlation."""
+    from .correlation.matrix import CorrelationAnalyzer
+    from .core.dna import AgentDNA
+
+    json_mode = getattr(args, 'json', False)
+    data_file = os.path.basename(args.data)
+    data_dir = os.path.dirname(args.data) or 'data'
+
+    # Build member list
+    members = []
+    if args.champions:
+        for path in args.champions:
+            if not os.path.exists(path):
+                continue
+            try:
+                with open(path) as f:
+                    data = json.load(f)
+                dna = AgentDNA()
+                genes = data.get('genes', data)
+                for gene in AgentDNA.GENE_FIELDS:
+                    if gene in genes and isinstance(genes[gene], (int, float)):
+                        setattr(dna, gene, float(genes[gene]))
+                if 'id' in data:
+                    dna.id = data['id']
+                members.append(dna)
+            except (json.JSONDecodeError, KeyError, TypeError):
+                pass
+
+    if len(members) < 2:
+        members = [AgentDNA().mutate(mutation_rate=0.5, mutation_strength=0.3) for _ in range(args.size)]
+
+    if not json_mode:
+        print(f"\n🧬 Darwinia Correlation Analysis — {len(members)} strategies")
+        print(f"   Data: {data_file}\n")
+
+    analyzer = CorrelationAnalyzer(data_dir=data_dir)
+    result = analyzer.analyze(members, data_file)
+
+    if json_mode:
+        print(json.dumps(result.to_dict(), indent=2))
+    else:
+        print(result.summary())
+
+
 def cmd_portfolio(args):
     """Allocate capital across multiple evolved strategies."""
     from .portfolio.allocator import PortfolioAllocator
@@ -1137,11 +1208,12 @@ def cmd_info(args):
         "description": "The Self-Evolving Agent Ecosystem",
         "genes": 17,
         "attack_types": 6,
-        "commands": 20,
+        "commands": 22,
         "modules": ["core", "evolution", "arena", "discovery", "chronicle",
                      "personality", "knowledge", "data", "macro", "integrations",
                      "analytics", "validation", "repair", "backtest",
-                     "ensemble", "montecarlo", "benchmark", "fingerprint", "portfolio"],
+                     "ensemble", "montecarlo", "benchmark", "fingerprint",
+                     "portfolio", "regime", "correlation"],
         "tests": test_count,
         "data_candles": candle_count,
         "data_files": [os.path.basename(f) for f in data_files],
@@ -1167,7 +1239,8 @@ def cmd_info(args):
         print("    backtest    Full performance analysis      export      Export strategy as JSON")
         print("    ensemble    Multi-agent committee vote     montecarlo  Monte Carlo stress test")
         print("    benchmark   Compare against baselines      fingerprint Strategy DNA fingerprint")
-        print("    portfolio   Multi-strategy capital alloc   repair      Self-repair degraded agents")
+        print("    portfolio   Multi-strategy capital alloc   regime      Market regime detection")
+        print("    correlation Strategy correlation matrix    repair      Self-repair degraded agents")
         print("    dashboard   Streamlit web UI               info        System info")
         print()
         print("  GitHub: https://github.com/0xSanei/darwinia")
@@ -1323,6 +1396,23 @@ def main():
     p_port.add_argument("--capital", type=float, default=10000.0, help="Initial capital per strategy (default: 10000)")
     p_port.add_argument("--json", action="store_true", help="Output results as JSON")
     p_port.set_defaults(func=cmd_portfolio)
+
+    # regime
+    p_reg = subparsers.add_parser("regime", help="Detect market regimes from price data")
+    p_reg.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
+    p_reg.add_argument("-w", "--window", type=int, default=20, help="Rolling window size (default: 20)")
+    p_reg.add_argument("--trend-t", type=float, default=1.0, help="Trend z-score threshold (default: 1.0)")
+    p_reg.add_argument("--vol-t", type=float, default=1.0, help="Volatility z-score threshold (default: 1.0)")
+    p_reg.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_reg.set_defaults(func=cmd_regime)
+
+    # correlation
+    p_corr = subparsers.add_parser("correlation", help="Cross-strategy correlation analysis")
+    p_corr.add_argument("-d", "--data", default="data/btc_1h.csv", help="Path to market data CSV")
+    p_corr.add_argument("--champions", nargs="*", help="Paths to champion JSON files")
+    p_corr.add_argument("-s", "--size", type=int, default=5, help="Synthetic member count (default: 5)")
+    p_corr.add_argument("--json", action="store_true", help="Output results as JSON")
+    p_corr.set_defaults(func=cmd_correlation)
 
     # dashboard
     p_dash = subparsers.add_parser("dashboard", help="Launch Streamlit dashboard")

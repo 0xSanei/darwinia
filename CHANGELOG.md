@@ -4,6 +4,21 @@ All notable changes to Darwinia are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [1.5.0] - 2026-04-13
+
+### Added
+- Market Regime Detector — rolling statistical classification into 5 regimes (trending up/down, mean reverting, high/low volatility)
+- Regime transition matrix, segment analysis, stability scoring, and distribution breakdown
+- Cross-Strategy Correlation Analyzer — pairwise Pearson correlation, ASCII heatmap, auto-clustering
+- Identifies redundant vs diversified strategies for portfolio construction
+- `regime` and `correlation` CLI commands with configurable thresholds
+- 25 new tests for regime detection and correlation analysis
+
+### Changed
+- CLI now has 22 commands (up from 20)
+- 21 modules total (added regime, correlation)
+- 215 tests (up from 190)
+
 ## [1.4.0] - 2026-04-09
 
 ### Added
